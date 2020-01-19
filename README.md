@@ -5,12 +5,10 @@ UdonPie Compiler
 (The parser part is Python 3.6. But semantic analysis is different from Python)
 * UdonPie compiler translates UdonPie code into Udon Assembly.
 * ** If you find a English mistake, it will help. **
+* Project Page: https://github.com/zz-roba/UdonPieCompiler
 
 ## Download Exe File
-(in preparation)
-
-https://zz-roba.booth.pm/xxxxxxxxxxxxxxxxxxxxxxx
-
+https://zz-roba.booth.pm/items/1789601
 
 
 ## Features
@@ -40,7 +38,8 @@ https://zz-roba.booth.pm/xxxxxxxxxxxxxxxxxxxxxxx
 
 ## Usage
 ```
-usage: udon_compiler.py [-h] input output
+usage: udon_compiler.py [-h] input output (python code)
+    or UdonPieC.exe [-h] input output (exe file)
 
 positional arguments:
   input       input UdonPie source code path (ex: .\example.py)
