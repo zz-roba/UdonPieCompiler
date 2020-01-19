@@ -1,0 +1,16 @@
+*.exe
+*.dll
+*.so
+
+.venv
+.vscode
+.mypy*/
+
+*.uasm
+*.venv
+*.py[cod]
+__pycache__/
+___*
+___*/
+build/
+dist/
