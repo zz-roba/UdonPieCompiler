@@ -100,7 +100,7 @@ def _start():
   print_calc()
 ```
 
-```
+``` py
 # Place randomly colored blocks in the scene
 # Demo Video https://twitter.com/zz_roba/status/1213365214135013376
 # Start Event
@@ -157,10 +157,6 @@ pip install -r requirements.txt
 make_exe.bat
 (The exe file is generated in "dist / UdonPie.exe".)
 ```
-
-## Licence
-
-[MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
 
 ## Author
 
