@@ -231,6 +231,12 @@ class UdonCompiler:
           # if ret_var_type != ...
         # Return
         self.uasm.jump_ret_addr()
+      # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
+      # (The compiler does not raise an error when reading Import / ImportFrom statements.)
+      elif type(expr) is ast.Import:
+        return
+      elif type(expr) is ast.ImportFrom:
+        return
       else:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement.')
 
