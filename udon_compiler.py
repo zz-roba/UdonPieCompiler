@@ -234,9 +234,9 @@ class UdonCompiler:
       # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
       # (The compiler does not raise an error when reading Import / ImportFrom statements.)
       elif type(stmt) is ast.Import:
-        return
+        pass
       elif type(stmt) is ast.ImportFrom:
-        return
+        pass
       else:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement.')
 
