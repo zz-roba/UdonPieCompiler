@@ -95,12 +95,12 @@ class UdonCompiler:
         names = _global.names
         for name in names:
           self.var_table.global_var_names.append(VarName(name))
-      # Assgin statment
+      # Assign statment
       #  | Assign(expr* targets, expr value)
       elif type(stmt) is ast.Assign:
-        assgin: ast.Assign = cast(ast.Assign, stmt)
+        assign: ast.Assign = cast(ast.Assign, stmt)
         # right expression
-        src_var_name: Optional[VarName] = self.eval_expr(assgin.value)
+        src_var_name: Optional[VarName] = self.eval_expr(assign.value)
         if src_var_name is None:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value on the right side of the assignment statement.')
         # left expression
