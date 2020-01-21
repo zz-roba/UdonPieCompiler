@@ -124,7 +124,7 @@ def _start():
       cube_insta.set_position(
         UnityEngineVector3.ctor(tmp_x, 0.0, tmp_y)
       )
-      cubes.Set(10 * y_i + x_i, cube_obj)
+      cubes[10 * y_i + x_i] = cube_obj
       x_i = x_i + 1
     y_i = y_i + 1 
 
@@ -133,7 +133,7 @@ def _onMouseDown():
   cube_i = 0
   while cube_i < 10 * 10:
     # Color change randomly
-    cube_renda = UnityEngineRenderer(cubes.Get(cube_i).GetComponent('Renderer'))
+    cube_renda = UnityEngineRenderer(cubes[cube_i].GetComponent('Renderer'))
     cube_renda.get_material().set_color(UnityEngineRandom.ColorHSV())
     cube_i = cube_i + 1 
 
