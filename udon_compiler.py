@@ -104,9 +104,17 @@ class UdonCompiler:
         if src_var_name is None:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value on the right side of the assignment statement.')
         # left expression
-        # FORCE CAST, NO CHECK
-        dist_var_name: VarName = assgin.targets[0].id # type: ignore
-        self.uasm.assign(dist_var_name, src_var_name)
+        if type(assign.targets[0]) is ast.Name:
+          # FORCE CAST
+          dist_var_name: VarName = cast(ast.Name, assign.targets[0]).id
+          self.uasm.assign(dist_var_name, src_var_name)
+        elif type(assign.targets[0]) is ast.Subscript:
+          # FORCE CAST
+          subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
+          _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[subscript_expr.slice.value, assign.value])
+          self.eval_expr(_call)
+        else:
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown value on the left side of the assignment statement.')
 
       # Expression
       # | Expr(expr value)
@@ -465,8 +473,16 @@ class UdonCompiler:
 
       self.uasm.call_extern(extern_str, [binop_left_var_name, binop_right_var_name, binop_result_var_name])
       return binop_result_var_name
+    
+    # Subscript Expression
+    # | Subscript(expr value, slice slice) - array[0]
+    elif type(expr) is ast.Subscript:
+      # FORCE CAST
+      subscript_expr: ast.Subscript = cast(ast.Subscript, expr)
+      _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[subscript_expr.slice.value])
+      return self.eval_call(_call)
     else:
-      raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Unsupported expression.')
+      raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Unsupported expression {type(expr)}.')
 
   # Call Expression
   # | Call(expr func, expr* args, keyword* keywords)
