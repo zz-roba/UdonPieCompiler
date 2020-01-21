@@ -22,6 +22,13 @@ https://zz-roba.booth.pm/items/1789601
 * The `this_trans` keyword represents this.UnityEngineTransform object for that object
 * The `this_gameObj` keyword represents this.UnityEngineGameObject object for that object
 * Built-in function `instantiate`
+* Udon Extern completion\
+  Code completion is realized by
+   "Python class file provided by [@Grim_es](https://twitter.com/Grim_es)" 
+   and "Editor with code completion function".\
+   The usage is described below.
+   (`How to use Udon Extern completion`)
+ 
 
 
 ## Requirement
@@ -32,6 +39,7 @@ https://zz-roba.booth.pm/items/1789601
 
 ## Roadmap
 * Implement user-defined recursive function
+* Implement Event with argument
 * Implement Inline Udon Assembler
 * Implement Impliment Udon Optimisation
 * Implement Udon Decompiler
@@ -136,8 +144,14 @@ def _onMouseDown():
     cube_renda = UnityEngineRenderer(cubes.Get(cube_i).GetComponent('Renderer'))
     cube_renda.get_material().set_color(UnityEngineRandom.ColorHSV())
     cube_i = cube_i + 1 
-
 ```
+
+## How to use Udon Extern completion
+* Extract the `udon_classes.zip` or` tools / udon_classes.zip` file.
+* Put the `udon_classes` directory in the same directory as the UdonPie source code.
+* Put `from. Udon_classes import *` at the top of UdonPie source code. \ 
+  (The UdonPie compiler ignores `Import` and` From`, which are used as input completion hints in the editor.)
+* Open the UdonPie source code in an input-completion editor such as PyCharm or VSCode.
 
 
 ## Similar projects
@@ -150,6 +164,8 @@ https://github.com/cannorin/sanuki
 https://github.com/cannorin/UdonTest
 * I used this project in order to make UdonAPI table `udon_funcs_data.py`.
 
+### [@Grim_es](https://twitter.com/Grim_es)
+* He created a `udon_classes` file that implements Udon extern completion.
 
 ## How to Make exe file
 ```
@@ -158,6 +174,8 @@ make_exe.bat
 (The exe file is generated in "dist / UdonPie.exe".)
 ```
 
+## History
+0.0.0 : first
 ## Author
 
 [zz_roba](https://github.com/tcnksm)
