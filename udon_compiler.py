@@ -602,7 +602,7 @@ class UdonCompiler:
       self.uasm.assign(cast_var_name, arg_var_name)
       return cast_var_name
     
-    # Call defined fuction
+    # Call defined function
     else:
       return self.uasm.call_def_func(org_func, arg_var_names)
 
