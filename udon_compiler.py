@@ -106,12 +106,15 @@ class UdonCompiler:
         # left expression
         if type(assign.targets[0]) is ast.Name:
           # FORCE CAST
-          dist_var_name: VarName = cast(ast.Name, assign.targets[0]).id
+          dist_var_name: VarName = VarName(cast(ast.Name, assign.targets[0]).id)
           self.uasm.assign(dist_var_name, src_var_name)
         elif type(assign.targets[0]) is ast.Subscript:
           # FORCE CAST
           subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
-          _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[subscript_expr.slice.value, assign.value])
+          # FORCE CAST, NO CHECK
+          # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+          index_value:ast.expr  = subscript_expr.slice.value # type: ignore
+          _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
           self.eval_expr(_call)
         else:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown value on the left side of the assignment statement.')
@@ -253,6 +256,7 @@ class UdonCompiler:
     """
     Eval expression
     """
+    _call: ast.Call
     # number Expression
     #  | Num(object n) -- a number as a PyObject.
     if type(expr) is ast.Num:
@@ -301,7 +305,7 @@ class UdonCompiler:
     # | Call(expr func, expr* args, keyword* keywords)
     elif type(expr) is ast.Call:
       # FORCE CAST
-      _call: ast.Call = cast(ast.Call, expr)
+      _call = cast(ast.Call, expr)
       return self.eval_call(_call)
 
     # Unary Expression
@@ -479,7 +483,9 @@ class UdonCompiler:
     elif type(expr) is ast.Subscript:
       # FORCE CAST
       subscript_expr: ast.Subscript = cast(ast.Subscript, expr)
-      _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[subscript_expr.slice.value])
+      # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+      index_value:ast.expr  = subscript_expr.slice.value # type: ignore
+      _call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[index_value])
       return self.eval_call(_call)
     else:
       raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Unsupported expression {type(expr)}.')

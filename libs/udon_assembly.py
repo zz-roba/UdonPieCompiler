@@ -146,11 +146,12 @@ class UdonAssembly:
     "Add variable, "
     # If the variable name on the right side is UdonTypeName, 
     # just set the type of the variable on the left.
+    src_var_type: UdonTypeName
     if src_var_name in udon_types:
-        src_var_type: UdonTypeName = UdonTypeName(src_var_name)
+        src_var_type = UdonTypeName(src_var_name)
         self.var_table.add_var(dist_var_name, src_var_type, 'null')
     else:
-      src_var_type: UdonTypeName = self.var_table.get_var_type(src_var_name)
+      src_var_type = self.var_table.get_var_type(src_var_name)
       # If the left variable is undefined, define the variable.
       if not self.var_table.exist_var(dist_var_name):
         self.add_inst_comment(f'Declare {dist_var_name}')
