@@ -85,7 +85,7 @@ class DefFuncTable:
   def get_ret_type(self, func_name: FuncName, arg_types: Tuple[UdonTypeName, ...]) -> UdonTypeName:
     ret_type: UdonTypeName
     if not self.exist_func(func_name, arg_types):
-      raise Exception(f'DefFuncTable.get_ret_type: Fuction {func_name}{arg_types} is not defined. \
+      raise Exception(f'DefFuncTable.get_ret_type: Function {func_name}{arg_types} is not defined. \
 Are the argument types correct?')
     ret_type, _ = self.func_dict[func_name, arg_types]
     return ret_type

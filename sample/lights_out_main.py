@@ -13,10 +13,10 @@ def init_vars()->SystemVoid:
 def flip(arg_x:SystemInt32, arg_y:SystemInt32)->SystemVoid:
   if (0 <= arg_x and arg_x < n_w) and (0 <= arg_y and arg_y < n_h):
     button_id = n_w * arg_y + arg_x
-    if flip_flags.Get(button_id):
-      flip_flags.Set(button_id, False)
+    if flip_flags[button_id]:
+      flip_flags[button_id] = False
     else:
-      flip_flags.Set(button_id, True)
+      flip_flags[button_id] = True
   return
 
 def _start():
@@ -33,7 +33,7 @@ def _start():
         UnityEngineVector3.ctor(tmp_x, 0.0, tmp_y)
       )
       button_id = n_w * y_i + x_i
-      buttons.Set(button_id, button_obj)
+      buttons[button_id] = button_obj
       x_i = x_i + 1
     y_i = y_i + 1 
 
@@ -56,8 +56,8 @@ def _update():
     x_i = 0
     while x_i < n_w:
       button_id = n_h * y_i + x_i
-      button_obj = buttons.Get(button_id)
-      flip_flag = flip_flags.Get(button_id)
+      button_obj = buttons[button_id]
+      flip_flag = flip_flags[button_id]
       button_renda = UnityEngineRenderer(button_obj.GetComponent('Renderer'))
       if button_renda.get_material().get_color().Equals(red_color):
         flip(x_i, y_i)
