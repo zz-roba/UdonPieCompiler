@@ -28,6 +28,7 @@ https://zz-roba.booth.pm/items/1789601
    and "Editor with code completion function".\
    The usage is described below.
    (`How to use Udon Extern completion`)
+* Array subscript access
  
 
 
@@ -166,6 +167,9 @@ https://github.com/cannorin/UdonTest
 
 ### [@Grim_es](https://twitter.com/Grim_es)
 * He created a `udon_classes` file that implements Udon extern completion.
+
+### [@Foorack](https://twitter.com/Foorack)
+* He has added an array subscript to the UdonPie compiler.
 
 ## How to Make exe file
 ```
