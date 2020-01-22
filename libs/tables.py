@@ -8,6 +8,7 @@ import pprint as pp
 from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from .my_type import *
+from libs.udon_types import *
 
 class VarTable:
   """
@@ -31,7 +32,10 @@ class VarTable:
 
   def get_var_type(self, var_name: VarName) -> UdonTypeName:
     if not self.exist_var(var_name):
-      raise Exception(f'get_var_type: Variable {var_name} is not defined.')
+      if var_name in udon_types:
+        return UdonTypeName(var_name)
+      else:
+        raise Exception(f'get_var_type: Variable {var_name} is not defined.')
     ret_type: UdonTypeName
     ret_type, _ = self.var_dict[var_name]
     return ret_type
