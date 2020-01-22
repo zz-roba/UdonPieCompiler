@@ -8,6 +8,7 @@ from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from .my_type import *
 from .tables import *
+from libs.udon_types import *
 
 # python 3.6.8
 
@@ -143,15 +144,21 @@ class UdonAssembly:
 
   def assign(self, dist_var_name: VarName, src_var_name: VarName) -> None:
     "Add variable, "
-    src_var_type: UdonTypeName = self.var_table.get_var_type(src_var_name)
-    # If the left variable is undefined, define the variable.
-    if not self.var_table.exist_var(dist_var_name):
-      self.add_inst_comment(f'Declare {dist_var_name}')
-      self.var_table.add_var(dist_var_name, src_var_type, 'null')
-    self.add_inst_comment(f'{str(dist_var_name)} = {str(src_var_name)}')
-    self.push_var(src_var_name)
-    self.push_var(dist_var_name)
-    self.copy()
+    # If the variable name on the right side is UdonTypeName, 
+    # just set the type of the variable on the left.
+    if src_var_name in udon_types:
+        src_var_type: UdonTypeName = UdonTypeName(src_var_name)
+        self.var_table.add_var(dist_var_name, src_var_type, 'null')
+    else:
+      src_var_type: UdonTypeName = self.var_table.get_var_type(src_var_name)
+      # If the left variable is undefined, define the variable.
+      if not self.var_table.exist_var(dist_var_name):
+        self.add_inst_comment(f'Declare {dist_var_name}')
+        self.var_table.add_var(dist_var_name, src_var_type, 'null')
+      self.add_inst_comment(f'{str(dist_var_name)} = {str(src_var_name)}')
+      self.push_var(src_var_name)
+      self.push_var(dist_var_name)
+      self.copy()
 
   def set_bool(self, var_name: VarName, bool_num: bool) -> None:
     self.push_str(f"{'true' if bool_num else 'false'}")
