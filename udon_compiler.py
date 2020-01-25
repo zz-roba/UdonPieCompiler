@@ -584,9 +584,9 @@ class UdonCompiler:
 
   def eval_call_without_dot(self, call: ast.Call, arg_var_names: List[VarName], arg_var_types: List[UdonTypeName]) -> Optional[VarName]:
     # FORCE CAST, NO CHECK
-    org_func: FuncName = f'{call.func.id}'  # type: ignore
+    func_name: FuncName = f'{call.func.id}'  # type: ignore
     # Embedded functions
-    if org_func == 'instantiate':
+    if func_name == 'instantiate':
       if len(arg_var_names) != 1:
         raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: instantiate must have exactly one argument.')
       arg_var_name: VarName = arg_var_names[0]
@@ -598,8 +598,8 @@ class UdonCompiler:
         [arg_var_name, instantiate_var_name])
       return instantiate_var_name
     # Force Cast
-    elif org_func in udon_types:
-      cast_type = UdonTypeName(org_func)
+    elif func_name in udon_types:
+      cast_type = UdonTypeName(func_name)
       cast_var_name = VarName(self.uasm.get_next_id('cast'))
       if len(arg_var_names) != 1:
         raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: A cast argument must be exactly one.')
