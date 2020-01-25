@@ -585,6 +585,34 @@ class UdonCompiler:
   def eval_call_without_dot(self, call: ast.Call, arg_var_names: List[VarName], arg_var_types: List[UdonTypeName]) -> Optional[VarName]:
     # FORCE CAST, NO CHECK
     org_func: FuncName = f'{call.func.id}'  # type: ignore
+
+    # Inline Assembly Function (for develop and debug)
+    # "jump_if_false", "jump" and "extern" are not processed here.
+    # It is necessary to process the argument without eval. 
+    # The reason is that it takes an address or a string directly as an argument.
+    arg_0_inst: List[FuncName] = [FuncName('nop'), FuncName('pop'), FuncName('copy')]
+    arg_1_inst: List[FuncName] = [FuncName('push'), FuncName('jump_indirect')]
+    if org_func in arg_0_inst:
+      if len(arg_var_names) != 0:
+        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: \
+          Inline assembly function {org_func} takes one argument.')
+        if org_func == 'nop':
+          self.uasm.nop()
+        elif org_func == 'pop':
+          self.uasm.pop()
+        elif org_func == 'copy':
+          self.uasm.copy()
+    elif org_func in arg_1_inst:
+      if len(arg_var_names) != 1:
+        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: \
+          Inline assembly function {org_func} takes one argument.')
+        # only var_name
+        if org_func == 'push':
+          self.uasm.push_var(arg_var_names[0])
+        # only var_name
+        elif org_func == 'jump_indirect':
+          self.uasm.jump_indirect(arg_var_names[0])
+
     # Embedded functions
     if org_func == 'instantiate':
       if len(arg_var_names) != 1:
