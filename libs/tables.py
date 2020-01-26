@@ -60,7 +60,11 @@ class VarTable:
         raise Exception(f'make_data_seg: Global variable {var_name} is not defined.')
       data_str += f'    .export {var_name}\n'
     for (var_name, (type_name, init_value)) in self.var_dict.items():
-      data_str += f'        {var_name}: %{type_name}, {init_value}\n'
+      # There is no class with the name VRCUdonUdonBehaviour, but UdonVM requires it to be named like that anyway.
+      if type_name == "VRCUdonCommonInterfacesIUdonEventReceiver":
+        data_str += f'        {var_name}: %VRCUdonUdonBehaviour, {init_value}\n'
+      else:
+        data_str += f'        {var_name}: %{type_name}, {init_value}\n'
     data_str += f'\n.data_end\n\n'
     return data_str
 
