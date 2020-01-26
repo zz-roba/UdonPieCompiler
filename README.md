@@ -171,6 +171,10 @@ https://github.com/cannorin/UdonTest
 ### [@Foorack](https://twitter.com/Foorack)
 * He has added an array subscript to the UdonPie compiler.
 
+### cannorin / UdonExternSearch
+https://github.com/cannorin/UdonExternSearch
+* This is useful for finding UdonAPI functions.
+
 ## How to Make exe file
 ```
 pip install -r requirements.txt
