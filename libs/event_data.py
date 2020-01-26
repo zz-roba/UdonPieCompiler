@@ -1,13 +1,17 @@
+from typing import *
+from typing_extensions import Literal # 3.8: typing.Literal
+from .my_type import *
+
 # form UDON/UdonBehaviour.cs
-event_table = {
+event_table: Dict[str, Tuple[Tuple[str, str], ...]] = {
   '_start': (),
   '_update': (),
   '_lateUpdate': (), 
   '_interact': (),
   '_fixedUpdate': (),
-  '_onAnimatorIk': (('SystemInt32', 'onAnimatorIkLayerIndex'),), # ok
+  '_onAnimatorIk': (('SystemInt32', 'onAnimatorIkLayerIndex'),),
   '_onAnimatorMove': (),
-  '_onAudioFilterRead': (('SystemSingleArray','onAudioFilterReadData', 'onAudioFilterReadChannels', 'SystemInt32')), # ok
+  '_onAudioFilterRead': (('SystemSingleArray','onAudioFilterReadData'), ('onAudioFilterReadChannels', 'SystemInt32')), 
   '_onBecameInvisible': (),
   '_onBecameVisible': (),
   '_onCollisionEnter': (('UnityEngineCollision', 'onCollisionEnterOther'),),
