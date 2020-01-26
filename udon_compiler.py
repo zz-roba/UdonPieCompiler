@@ -610,7 +610,7 @@ class UdonCompiler:
     
     # Call defined function
     else:
-      return self.uasm.call_def_func(org_func, arg_var_names)
+      return self.uasm.call_def_func(func_name, arg_var_names)
 
 if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser(description='UdonPie language Udon Assembly compiler', add_help=True)
