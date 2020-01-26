@@ -9,6 +9,7 @@ from typing_extensions import Literal # 3.8: typing.Literal
 from .my_type import *
 from .tables import *
 from libs.udon_types import *
+from libs.event_data import *
 
 # python 3.6.8
 
@@ -236,6 +237,16 @@ class UdonAssembly:
       return None
 
   def add_event(self, event_name: EventName) -> None:
+    if event_name in event_table:
+      arg_type_and_names = event_table[event_name]
+      # Define the variables required for the event with arguments.
+      for arg_type_name, arg_name in arg_type_and_names:
+        self.var_table.add_var(VarName(arg_name), UdonTypeName(arg_type_name), 'null')
+    else:
+      # TODO: Add user event processing
+      # (I still don't understand the specifications of user events)
+      arg_type_and_names = ()
+    
     self.event_names.append(event_name)
 
   def event_head(self, event_name: EventName) -> None:
