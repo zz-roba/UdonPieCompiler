@@ -83,173 +83,184 @@ class UdonCompiler:
           self.def_func_table.add_func(FuncName(func_name), tuple(arg_types), ret_type, tuple(arg_var_names))
 
   def eval_body(self, body: List[ast.stmt]) -> None:
-    """
-    Eval body(statments)
-    """
     stmt: ast.stmt
     for stmt in body:
-      # Global statment
-      #  | Global(identifier* names)
-      if type(stmt) is ast.Global:
-        _global: ast.Global = cast(ast.Global, stmt)
-        names = _global.names
-        for name in names:
-          self.var_table.global_var_names.append(VarName(name))
-      # Assign statment
-      #  | Assign(expr* targets, expr value)
-      elif type(stmt) is ast.Assign:
-        assign: ast.Assign = cast(ast.Assign, stmt)
-        # right expression
-        src_var_name: Optional[VarName] = self.eval_expr(assign.value)
-        if src_var_name is None:
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value on the right side of the assignment statement.')
-        # left expression
-        if type(assign.targets[0]) is ast.Name:
-          # FORCE CAST
-          dist_var_name: VarName = VarName(cast(ast.Name, assign.targets[0]).id)
-          self.uasm.assign(dist_var_name, src_var_name)
-        elif type(assign.targets[0]) is ast.Subscript:
-          # FORCE CAST
-          subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
-          # FORCE CAST, NO CHECK
-          # TODO: Add checking type(subscript_expr.slice) is ast.Index 
-          index_value:ast.expr  = subscript_expr.slice.value # type: ignore
-          _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
-          self.eval_expr(_call)
-        else:
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown value on the left side of the assignment statement.')
+      self.eval_stmt(stmt)
 
-      # Expression
-      # | Expr(expr value)
-      elif type(stmt) is ast.Expr:
-        expr: ast.Expr = cast(ast.Expr, stmt)
-        self.eval_expr(expr.value)
-
-      # If statment
-      # | If(expr test, stmt* body, stmt* orelse)
-      elif type(stmt) is ast.If:
-        if_stmt: ast.If = cast(ast.If, stmt) # FORCE CAST
-        else_label = LabelName(self.uasm.get_next_id('else_label'))
-        if_end_label = LabelName(self.uasm.get_next_id('if_end_label'))
-
-        test_result_var_name = self.eval_expr(if_stmt.test)
-        if test_result_var_name is None:
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
-
-        if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
-        self.uasm.push_var(test_result_var_name)
-        # if (!test) goto else
-        self.uasm.jump_if_false_label(else_label)
-        # {}
-        self.eval_body(if_stmt.body)
-        # goto if_end
-        self.uasm.jump_label(if_end_label)
-        # else:
-        self.uasm.add_label_crrent_addr(else_label)
-        self.eval_body(if_stmt.orelse)
-        # if_end:
-        self.uasm.add_label_crrent_addr(if_end_label)
-
-      # While statment
-      # | While(expr test, stmt* body, stmt* orelse)
-      # orelse is not implemented
-      elif type(stmt) is ast.While:
-        while_stmt: ast.While = cast(ast.While, stmt) # FORCE CAST
-        while_label = LabelName(self.uasm.get_next_id('while_label'))
-        while_end_label = LabelName(self.uasm.get_next_id('while_end_label'))
-        # while_label:
-        self.uasm.add_label_crrent_addr(while_label)
-        test_result_var_name = self.eval_expr(while_stmt.test)
-        if test_result_var_name is None:
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
-
-        if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
-        self.uasm.push_var(test_result_var_name)
-        # if (!test) goto else
-        self.uasm.jump_if_false_label(while_end_label)
-        # {}
-        self.eval_body(while_stmt.body)
-        # goto while:
-        self.uasm.jump_label(while_label)
-        # while_end:
-        self.uasm.add_label_crrent_addr(while_end_label)
-
-      # Function definition
-      # FunctionDef(identifier name, arguments args,
-      #  stmt* body, expr* decorator_list, expr? returns,
-      #  string? type_comment)
-      elif type(stmt) is ast.FunctionDef:
+  def eval_stmt(self, stmt: ast.stmt) -> None:
+    # Global statment
+    #  | Global(identifier* names)
+    if type(stmt) is ast.Global:
+      _global: ast.Global = cast(ast.Global, stmt)
+      names = _global.names
+      for name in names:
+        self.var_table.global_var_names.append(VarName(name))
+    # Assign statment
+    #  | Assign(expr* targets, expr value)
+    elif type(stmt) is ast.Assign:
+      assign: ast.Assign = cast(ast.Assign, stmt)
+      # right expression
+      src_var_name: Optional[VarName] = self.eval_expr(assign.value)
+      if src_var_name is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value on the right side of the assignment statement.')
+      # left expression
+      if type(assign.targets[0]) is ast.Name:
         # FORCE CAST
-        funcdef_stmt: ast.FunctionDef = cast(ast.FunctionDef, stmt)
-        func_name:str = funcdef_stmt.name
-        # Functions starting with an underscore are events
-        if func_name.startswith('_'):
-          self.uasm.event_head(EventName(func_name))  # Move to pre_check_func_defs function
-          # TODO: FIX
-          self.uasm.set_uint32(VarName('ret_addr'), 0xFFFFFF)
-          self.eval_body(funcdef_stmt.body)
-          self.uasm.end()
-
-        # Otherwise, the defined function
-        else:
-          self.uasm.add_label_crrent_addr(LabelName(func_name))
-          arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
-          self.uasm.env_vars = arg_var_names 
-          # FORCE CAST, NO CHECK
-          arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
-          # FORCE CAST, NO CHECK
-          arg_var_name_types: List[Tuple[VarName, UdonTypeName]] = zip(arg_var_names, arg_types) # type: ignore
-          ret_type: UdonTypeName
-          # FORCE CAST, NO CHECK
-          if funcdef_stmt.returns.id is not None: # type: ignore
-            # FORCE CAST, NO CHECK
-            ret_type = funcdef_stmt.returns.id  # type: ignore
-          else:
-            ret_type = UdonTypeName('SystemVoid')
-
-          # Add argment tmp variables
-          for arg_var_name, arg_type in arg_var_name_types:
-            self.var_table.add_var(arg_var_name, arg_type, 'null')
-          # Pop Argument
-          self.uasm.pop_vars(arg_var_names)
-          # Eval Function body
-          self.eval_body(funcdef_stmt.body)
-          # Pop Return Address
-          self.uasm.pop_var(VarName('ret_addr'))
-          # Return
-          self.uasm.jump_ret_addr()
-          self.uasm.env_vars = []
-
-      # Return Statment
-      # | Return(expr? value)
-      elif type(stmt) is ast.Return:
+        dist_var_name: VarName = VarName(cast(ast.Name, assign.targets[0]).id)
+        self.uasm.assign(dist_var_name, src_var_name)
+      elif type(assign.targets[0]) is ast.Subscript:
         # FORCE CAST
-        return_stmt: ast.Return = cast(ast.Return, stmt)
+        subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
+        # FORCE CAST, NO CHECK
+        # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+        index_value:ast.expr  = subscript_expr.slice.value # type: ignore
+        _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
+        self.eval_expr(_call)
+      else:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown value on the left side of the assignment statement.')
+
+    # Expression
+    # | Expr(expr value)
+    elif type(stmt) is ast.Expr:
+      expr: ast.Expr = cast(ast.Expr, stmt)
+      self.eval_expr(expr.value)
+
+    # If statment
+    # | If(expr test, stmt* body, stmt* orelse)
+    elif type(stmt) is ast.If:
+      if_stmt: ast.If = cast(ast.If, stmt) # FORCE CAST
+      else_label = LabelName(self.uasm.get_next_id('else_label'))
+      if_end_label = LabelName(self.uasm.get_next_id('if_end_label'))
+
+      test_result_var_name = self.eval_expr(if_stmt.test)
+      if test_result_var_name is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
+
+      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
+      self.uasm.push_var(test_result_var_name)
+      # if (!test) goto else
+      self.uasm.jump_if_false_label(else_label)
+      # {}
+      self.eval_body(if_stmt.body)
+      # goto if_end
+      self.uasm.jump_label(if_end_label)
+      # else:
+      self.uasm.add_label_crrent_addr(else_label)
+      self.eval_body(if_stmt.orelse)
+      # if_end:
+      self.uasm.add_label_crrent_addr(if_end_label)
+
+    # While statment
+    # | While(expr test, stmt* body, stmt* orelse)
+    # orelse is not implemented
+    elif type(stmt) is ast.While:
+      while_stmt: ast.While = cast(ast.While, stmt) # FORCE CAST
+      while_label = LabelName(self.uasm.get_next_id('while_label'))
+      while_end_label = LabelName(self.uasm.get_next_id('while_end_label'))
+      # while_label:
+      self.uasm.add_label_crrent_addr(while_label)
+      test_result_var_name = self.eval_expr(while_stmt.test)
+      if test_result_var_name is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
+
+      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
+      self.uasm.push_var(test_result_var_name)
+      # if (!test) goto else
+      self.uasm.jump_if_false_label(while_end_label)
+      # {}
+      self.eval_body(while_stmt.body)
+      # goto while:
+      self.uasm.jump_label(while_label)
+      # while_end:
+      self.uasm.add_label_crrent_addr(while_end_label)
+
+    # Function definition
+    # FunctionDef(identifier name, arguments args,
+    #  stmt* body, expr* decorator_list, expr? returns,
+    #  string? type_comment)
+    elif type(stmt) is ast.FunctionDef:
+      # FORCE CAST
+      funcdef_stmt: ast.FunctionDef = cast(ast.FunctionDef, stmt)
+      func_name:str = funcdef_stmt.name
+      # Functions starting with an underscore are events
+      if func_name.startswith('_'):
+        self.uasm.event_head(EventName(func_name))  # Move to pre_check_func_defs function
+        # TODO: FIX
+        self.uasm.set_uint32(VarName('ret_addr'), 0xFFFFFF)
+        self.eval_body(funcdef_stmt.body)
+        self.uasm.end()
+
+      # Otherwise, the defined function
+      else:
+        self.uasm.add_label_crrent_addr(LabelName(func_name))
+        arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
+        self.uasm.env_vars = arg_var_names 
+        # FORCE CAST, NO CHECK
+        arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
+        # FORCE CAST, NO CHECK
+        arg_var_name_types: List[Tuple[VarName, UdonTypeName]] = zip(arg_var_names, arg_types) # type: ignore
+        ret_type: UdonTypeName
+        # FORCE CAST, NO CHECK
+        if funcdef_stmt.returns.id is not None: # type: ignore
+          # FORCE CAST, NO CHECK
+          ret_type = funcdef_stmt.returns.id  # type: ignore
+        else:
+          ret_type = UdonTypeName('SystemVoid')
+
+        # Add argment tmp variables
+        for arg_var_name, arg_type in arg_var_name_types:
+          self.var_table.add_var(arg_var_name, arg_type, 'null')
+        # Pop Argument
+        self.uasm.pop_vars(arg_var_names)
+        # Eval Function body
+        self.eval_body(funcdef_stmt.body)
         # Pop Return Address
         self.uasm.pop_var(VarName('ret_addr'))
-        # If return statement with expression
-        if return_stmt.value is not None:
-          # Eval return expression
-          ret_var_name = self.eval_expr(return_stmt.value)
-          if ret_var_name is None:
-            raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
-          # Push Retern value
-          self.uasm.push_var(ret_var_name)
-          # TODO: Add return type check
-          # ret_var_type = self.var_table.get_var_type(ret_var_name)
-          # if ret_var_type != ...
         # Return
         self.uasm.jump_ret_addr()
-      # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
-      # (The compiler does not raise an error when reading Import / ImportFrom statements.)
-      elif type(stmt) is ast.Import:
-        pass
-      elif type(stmt) is ast.ImportFrom:
-        pass
+        self.uasm.env_vars = []
+    # AugAssign Statement
+    # | AugAssign(expr target, operator op, expr value) - x += 1
+    elif type(stmt) is ast.AugAssign:
+      # FORCE CAST
+      augassign_stmt: ast.AugAssign = cast(ast.AugAssign, stmt)
+      augassign_expr: ast.expr
+      if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div]:
+        augassign_expr = ast.BinOp(left=augassign_stmt.target, op=augassign_stmt.op, right=augassign_stmt.value)
       else:
-        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement.')
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown AugAssign operand {type(augassign_stmt.op)}')
+      self.eval_stmt(ast.Assign(targets=[augassign_stmt.target], value=augassign_expr))
+
+    # Return Statment
+    # | Return(expr? value)
+    elif type(stmt) is ast.Return:
+      # FORCE CAST
+      return_stmt: ast.Return = cast(ast.Return, stmt)
+      # Pop Return Address
+      self.uasm.pop_var(VarName('ret_addr'))
+      # If return statement with expression
+      if return_stmt.value is not None:
+        # Eval return expression
+        ret_var_name = self.eval_expr(return_stmt.value)
+        if ret_var_name is None:
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
+        # Push Retern value
+        self.uasm.push_var(ret_var_name)
+        # TODO: Add return type check
+        # ret_var_type = self.var_table.get_var_type(ret_var_name)
+        # if ret_var_type != ...
+      # Return
+      self.uasm.jump_ret_addr()
+    # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
+    # (The compiler does not raise an error when reading Import / ImportFrom statements.)
+    elif type(stmt) is ast.Import:
+      pass
+    elif type(stmt) is ast.ImportFrom:
+      pass
+    else:
+      raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement {type(stmt)}.')
 
 
   def eval_expr(self, expr: ast.expr) -> Optional[VarName]:
