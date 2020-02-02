@@ -27,7 +27,18 @@ class UdonCompiler:
     self.def_func_table = DefFuncTable()
     self.uasm = UdonAssembly(self.var_table, self.def_func_table)
     self.udon_method_table = UdonMethodTable()
-    self.node = ast.parse(code)
+    
+    # IGNORE annotation
+    # I want to give the editor a hint as Python code, but write lines that I don't want to parse.
+    # Delete the line containing IGNORE_LINE for that purpose.
+    # example:
+    # from. Udon_classes import * # IGNORE_LINE
+    code_lines = code.splitlines()
+    replaced_code = ''
+    for code_line in code_lines:
+      if 'IGNORE_LINE' not in code_line:
+        replaced_code += f'{code_line}\n'
+    self.node = ast.parse(replaced_code)
 
   def make_uasm_code(self) -> str:
     # return address
@@ -275,8 +286,14 @@ class UdonCompiler:
     # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
     # (The compiler does not raise an error when reading Import / ImportFrom statements.)
     elif type(stmt) is ast.Import:
+      # TODO: Add Include system like C
+      # Relative path include:
+      #   import _.aaa.bbb.py # Include the code of ./aaa/bbb.py.
+      # Standard library path include:
+      #   import lib.ccc.py # Include the code of /lib.ccc.py.
       pass
     elif type(stmt) is ast.ImportFrom:
+      # I do not use this
       pass
     else:
       raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement {type(stmt)}.')

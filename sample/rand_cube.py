@@ -1,3 +1,5 @@
+from. Udon_classes import *  # IGNORE_LINE
+
 # Place randomly colored blocks in the scene
 # Demo Video https://twitter.com/zz_roba/status/1213365214135013376
 # Start Event

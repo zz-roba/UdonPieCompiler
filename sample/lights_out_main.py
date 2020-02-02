@@ -1,3 +1,5 @@
+from. Udon_classes import *  # IGNORE_LINE
+
 def init_vars()->SystemVoid:
   n_w = 5
   n_h = 5
