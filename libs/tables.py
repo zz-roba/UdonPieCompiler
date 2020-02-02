@@ -1,5 +1,6 @@
 # python 3.6.8
 import sys
+import os
 import ast
 # Commented out because Pyinstaller failed to run.
 # import astor # type: ignore
@@ -9,6 +10,12 @@ from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from .my_type import *
 from libs.udon_types import *
+
+
+def resource_path(relative_path: str) -> str:
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path) # type: ignore
+    return os.path.join(os.path.abspath("."), relative_path)
 
 class VarTable:
   """
@@ -109,7 +116,7 @@ class UdonMethodTable:
 
   def __init__(self) -> None:
     self.udon_method_dict = {}
-    f = open('./udon_funcs_data.py', encoding="utf-8")
+    f = open(resource_path('udon_funcs_data.py'), encoding="utf-8")
     self.udon_method_dict = eval(f.read())
 
   def get_ret_type_extern_str(
