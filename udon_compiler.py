@@ -210,11 +210,12 @@ class UdonCompiler:
         self.uasm.event_head(event_name) 
 
         # Copy event arguments to defined formal arguments.
-        table_arg_type_and_names = event_table[event_name]
-        pair_var_names_var_types =  zip(table_arg_type_and_names, def_arg_var_names, def_arg_types)
-        for ((table_arg_type_name, table_arg_name), def_arg_var_name, def_arg_type) in pair_var_names_var_types:
-          self.var_table.add_var(def_arg_var_name, def_arg_type, 'null')
-          self.uasm.assign(def_arg_var_name, VarName(table_arg_name))
+        if event_name in event_table:
+          table_arg_type_and_names = event_table[event_name]
+          pair_var_names_var_types =  zip(table_arg_type_and_names, def_arg_var_names, def_arg_types)
+          for ((table_arg_type_name, table_arg_name), def_arg_var_name, def_arg_type) in pair_var_names_var_types:
+            self.var_table.add_var(def_arg_var_name, def_arg_type, 'null')
+            self.uasm.assign(def_arg_var_name, VarName(table_arg_name))
 
         # TODO: FIX
         self.uasm.set_uint32(VarName('ret_addr'), 0xFFFFFF)
