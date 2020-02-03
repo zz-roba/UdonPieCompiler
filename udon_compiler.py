@@ -675,6 +675,7 @@ if __name__ == '__main__':
     f = open(args.output, 'w')
     f.write(asm)
     f.close()
-  except Exception as ex:
-    print(ex)
-
+  except Exception as e:
+    t, v, tb = sys.exc_info()
+    print(traceback.format_exception(t,v,tb))
+    print(traceback.format_tb(e.__traceback__))
