@@ -1,3 +1,5 @@
+from. Udon_classes import *  # IGNORE_LINE
+
 # You can make the variable var_name global
 # by typing "global {var_name}" at the beginning of the code.
 global a

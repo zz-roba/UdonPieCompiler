@@ -18,6 +18,7 @@ a = Analysis(['udon_compiler.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+a.datas += [('udon_funcs_data.py', '.\\udon_funcs_data.py', 'DATA')]
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,

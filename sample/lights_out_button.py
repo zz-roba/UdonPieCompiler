@@ -1,3 +1,5 @@
+from. Udon_classes import *  # IGNORE_LINE
+
 def _start():
   red_color = UnityEngineColor.ctor(1.0, 0.0, 0.0)
 

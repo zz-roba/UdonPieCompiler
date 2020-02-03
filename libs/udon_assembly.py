@@ -236,16 +236,24 @@ class UdonAssembly:
       self.pop_var(VarName('ret_addr'))
       return None
 
-  def add_event(self, event_name: EventName) -> None:
+  def add_event(self, event_name: EventName,
+                def_arg_var_names: List[VarName], def_arg_types: List[UdonTypeName]) -> None:
     if event_name in event_table:
-      arg_type_and_names = event_table[event_name]
+      table_arg_type_and_names = event_table[event_name]
       # Define the variables required for the event with arguments.
-      for arg_type_name, arg_name in arg_type_and_names:
-        self.var_table.add_var(VarName(arg_name), UdonTypeName(arg_type_name), 'null')
+      pair_var_names_var_types =  zip(table_arg_type_and_names, def_arg_var_names, def_arg_types)
+
+      if len(table_arg_type_and_names) != len(def_arg_var_names):
+          raise Exception(f'add_event: The required arguments for event {event_name} and the number of defined arguments are different.')
+
+      for ((table_arg_type_name, table_arg_name), def_arg_var_name, def_arg_type) in pair_var_names_var_types:
+        if table_arg_type_name != def_arg_type:
+          raise Exception(f'add_event: The type of the argument of event {event_name} is different.')
+        self.var_table.add_var(VarName(table_arg_name), UdonTypeName(table_arg_type_name), 'null')
     else:
       # TODO: Add user event processing
       # (I still don't understand the specifications of user events)
-      arg_type_and_names = ()
+      table_arg_type_and_names = ()
     
     self.event_names.append(event_name)
 

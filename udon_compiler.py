@@ -11,6 +11,7 @@ from libs.my_type import *
 from libs.tables import *
 from libs.udon_assembly import *
 from libs.udon_types import *
+from libs.event_data import *
 
 # python 3.6.8
 
@@ -26,7 +27,18 @@ class UdonCompiler:
     self.def_func_table = DefFuncTable()
     self.uasm = UdonAssembly(self.var_table, self.def_func_table)
     self.udon_method_table = UdonMethodTable()
-    self.node = ast.parse(code)
+    
+    # IGNORE annotation
+    # I want to give the editor a hint as Python code, but write lines that I don't want to parse.
+    # Delete the line containing IGNORE_LINE for that purpose.
+    # example:
+    # from. Udon_classes import * # IGNORE_LINE
+    code_lines = code.splitlines()
+    replaced_code = ''
+    for code_line in code_lines:
+      if 'IGNORE_LINE' not in code_line:
+        replaced_code += f'{code_line}\n'
+    self.node = ast.parse(replaced_code)
 
   def make_uasm_code(self) -> str:
     # return address
@@ -64,12 +76,16 @@ class UdonCompiler:
         # FORCE CAST
         funcdef_stmt: ast.FunctionDef = cast(ast.FunctionDef, stmt)
         func_name:str = funcdef_stmt.name
+        arg_var_names: List[VarName]
         # Functions starting with an underscore are events
         if func_name.startswith('_'):
-          self.uasm.add_event(EventName(func_name))
+          arg_var_names  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
+          # FORCE CAST, NO CHECK
+          arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args] # type: ignore
+          self.uasm.add_event(EventName(func_name), arg_var_names, arg_types)
         # Otherwise, the defined function
         else:
-          arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
+          arg_var_names  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
           # FORCE CAST, NO CHECK
           arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
           ret_type: UdonTypeName
@@ -186,11 +202,25 @@ class UdonCompiler:
       func_name:str = funcdef_stmt.name
       # Functions starting with an underscore are events
       if func_name.startswith('_'):
-        self.uasm.event_head(EventName(func_name))  # Move to pre_check_func_defs function
+        event_name: EventName = EventName(func_name)
+        def_arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
+        self.uasm.env_vars = def_arg_var_names 
+        # FORCE CAST, NO CHECK
+        def_arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
+        self.uasm.event_head(event_name) 
+
+        # Copy event arguments to defined formal arguments.
+        table_arg_type_and_names = event_table[event_name]
+        pair_var_names_var_types =  zip(table_arg_type_and_names, def_arg_var_names, def_arg_types)
+        for ((table_arg_type_name, table_arg_name), def_arg_var_name, def_arg_type) in pair_var_names_var_types:
+          self.var_table.add_var(def_arg_var_name, def_arg_type, 'null')
+          self.uasm.assign(def_arg_var_name, VarName(table_arg_name))
+
         # TODO: FIX
         self.uasm.set_uint32(VarName('ret_addr'), 0xFFFFFF)
         self.eval_body(funcdef_stmt.body)
         self.uasm.end()
+        self.uasm.env_vars = []
 
       # Otherwise, the defined function
       else:
@@ -256,8 +286,14 @@ class UdonCompiler:
     # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
     # (The compiler does not raise an error when reading Import / ImportFrom statements.)
     elif type(stmt) is ast.Import:
+      # TODO: Add Include system like C
+      # Relative path include:
+      #   import _.aaa.bbb.py # Include the code of ./aaa/bbb.py.
+      # Standard library path include:
+      #   import lib.ccc.py # Include the code of /lib.ccc.py.
       pass
     elif type(stmt) is ast.ImportFrom:
+      # I do not use this
       pass
     else:
       raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unsupported statement {type(stmt)}.')
