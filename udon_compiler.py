@@ -258,7 +258,7 @@ class UdonCompiler:
       # FORCE CAST
       augassign_stmt: ast.AugAssign = cast(ast.AugAssign, stmt)
       augassign_expr: ast.expr
-      if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div]:
+      if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod]:
         augassign_expr = ast.BinOp(left=augassign_stmt.target, op=augassign_stmt.op, right=augassign_stmt.value)
       else:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown AugAssign operand {type(augassign_stmt.op)}')
@@ -414,6 +414,9 @@ class UdonCompiler:
       # /
       elif type(bin_expr.op) is ast.Div:
         func_name = 'op_Division'
+      # %
+      elif type(bin_expr.op) is ast.Mod:
+        func_name = 'op_Remainder'
       else:
         raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator')
       ret_type_extern_str = self.udon_method_table.get_ret_type_extern_str(
