@@ -5,12 +5,12 @@ def _start():
   while i <= 100:
     # Logical operators ("and" and "or") cannot be written consecutively
     # ("A and B and C" must be written as "(A and B) and C").
-    if i == i / 3 * 3 and i == i / 5 * 5:
+    if i % 3 == 0 and i % 5 == 5:
       UnityEngineDebug.Log(SystemObject('fizzbuzz.'))
-    elif i == i / 3 * 3:
+    elif i % 3 == 0:
       UnityEngineDebug.Log(SystemObject('fizz.'))
-    elif i == i / 5 * 5:
+    elif i % 5 == 0:
       UnityEngineDebug.Log(SystemObject('buzz.'))
     else:
       UnityEngineDebug.Log(SystemObject(i))
-    i = i + 1
+    i += 1
