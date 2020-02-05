@@ -414,6 +414,9 @@ class UdonCompiler:
       # /
       elif type(bin_expr.op) is ast.Div:
         func_name = 'op_Division'
+      # %
+      elif type(bin_expr.op) is ast.Mod:
+        func_name = 'op_Remainder'
       else:
         raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator')
       ret_type_extern_str = self.udon_method_table.get_ret_type_extern_str(
