@@ -410,7 +410,11 @@ class UdonCompiler:
         func_name = 'op_Subtraction'
       # *
       elif type(bin_expr.op) is ast.Mult:
-        func_name = 'op_Multiplication'
+        # Special case: Udon is not consistent in naming, and for certain classes it is called op_Multiply instead of op_Multiplication.
+        if left_var_type in ["UnityEngineColor", "UnityEngineMatrix4x4", 'UnityEngineQuaternion', 'UnityEngineVector2', 'UnityEngineVector3', 'UnityEngineVector4']:
+          func_name = 'op_Multiply'
+        else:
+          func_name = 'op_Multiplication'
       # /
       elif type(bin_expr.op) is ast.Div:
         func_name = 'op_Division'
