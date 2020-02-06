@@ -285,7 +285,6 @@ class UdonCompiler:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
         # Push Retern value
         self.uasm.push_var(ret_var_name)
-        # TODO: Add return type check #########################
         ret_var_type = self.var_table.get_var_type(ret_var_name)
         if self.current_func_ret_type != None and ret_var_type != self.current_func_ret_type:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Return expression type "{ret_var_type}" does not match return type "{self.current_func_ret_type}" in the function definition.')
