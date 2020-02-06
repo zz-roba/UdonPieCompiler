@@ -129,7 +129,9 @@ class UdonCompiler:
         # FORCE CAST
         subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
         # FORCE CAST, NO CHECK
-        # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+        if type(subscript_expr.slice) is not ast.Index:
+          raise Exception(f'{subscript_expr.lineno}:{subscript_expr.col_offset} {self.print_ast(subscript_expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+        
         index_value:ast.expr  = subscript_expr.slice.value # type: ignore
         _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
         self.eval_expr(_call)
