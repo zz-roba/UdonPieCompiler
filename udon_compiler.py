@@ -5,6 +5,7 @@ import ast
 import re
 import pprint as pp
 import argparse
+import traceback
 from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from libs.my_type import *
@@ -21,12 +22,14 @@ class UdonCompiler:
   def_func_table: DefFuncTable
   udon_method_table: UdonMethodTable
   node: ast.AST
+  current_func_ret_type: Optional[UdonTypeName]
 
   def __init__(self, code: str) -> None:
     self.var_table = VarTable()
     self.def_func_table = DefFuncTable()
     self.uasm = UdonAssembly(self.var_table, self.def_func_table)
     self.udon_method_table = UdonMethodTable()
+    self.current_func_ret_type = None
     
     # IGNORE annotation
     # I want to give the editor a hint as Python code, but write lines that I don't want to parse.
@@ -128,7 +131,9 @@ class UdonCompiler:
         # FORCE CAST
         subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
         # FORCE CAST, NO CHECK
-        # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+        if type(subscript_expr.slice) is not ast.Index:
+          raise Exception(f'{subscript_expr.lineno}:{subscript_expr.col_offset} {self.print_ast(subscript_expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+        
         index_value:ast.expr  = subscript_expr.slice.value # type: ignore
         _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
         self.eval_expr(_call)
@@ -239,7 +244,7 @@ class UdonCompiler:
           ret_type = funcdef_stmt.returns.id  # type: ignore
         else:
           ret_type = UdonTypeName('SystemVoid')
-
+        self.current_func_ret_type = ret_type # for type checking return expr 
         # Add argment tmp variables
         for arg_var_name, arg_type in arg_var_name_types:
           self.var_table.add_var(arg_var_name, arg_type, 'null')
@@ -252,6 +257,7 @@ class UdonCompiler:
         # Return
         self.uasm.jump_ret_addr()
         self.uasm.env_vars = []
+        current_func_ret_type = None
     # AugAssign Statement
     # | AugAssign(expr target, operator op, expr value) - x += 1
     elif type(stmt) is ast.AugAssign:
@@ -279,9 +285,15 @@ class UdonCompiler:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
         # Push Retern value
         self.uasm.push_var(ret_var_name)
-        # TODO: Add return type check
-        # ret_var_type = self.var_table.get_var_type(ret_var_name)
-        # if ret_var_type != ...
+        ret_var_type = self.var_table.get_var_type(ret_var_name)
+        if self.current_func_ret_type != None and ret_var_type != self.current_func_ret_type:
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Return expression type "{ret_var_type}" does not match return type "{self.current_func_ret_type}" in the function definition.')
+      
+      # If return statement without expression
+      else:
+        if self.current_func_ret_type != None and self.current_func_ret_type != UdonTypeName('SystemVoid'):
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: ReThis function returns a value of type "{self.current_func_ret_type}", but did not return a value in the return statement.')
+
       # Return
       self.uasm.jump_ret_addr()
     # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
@@ -534,7 +546,10 @@ class UdonCompiler:
     elif type(expr) is ast.Subscript:
       # FORCE CAST
       subscript_expr: ast.Subscript = cast(ast.Subscript, expr)
-      # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+      # checking type(subscript_expr.slice) is ast.Index
+      if type(subscript_expr.slice) is not ast.Index:
+        raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+
       index_value:ast.expr  = subscript_expr.slice.value # type: ignore
       _call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[index_value])
       return self.eval_call(_call)
@@ -667,6 +682,7 @@ if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser(description='UdonPie language Udon Assembly compiler', add_help=True)
   arg_parser.add_argument('input', help='input UdonPie source code path (ex: .\example.py)')
   arg_parser.add_argument('output', help='output Udon Assembly code path (ex: .\example.uasm)')
+  arg_parser.add_argument('--cdbg',  help='for compiler debugging', action='store_true')
   args = arg_parser.parse_args()
 
   try:
@@ -679,6 +695,8 @@ if __name__ == '__main__':
     f.write(asm)
     f.close()
   except Exception as e:
-    t, v, tb = sys.exc_info()
-    print(traceback.format_exception(t,v,tb))
-    print(traceback.format_tb(e.__traceback__))
+    if args.cdbg:
+      t, v, tb = sys.exc_info()
+      print(traceback.format_exc())
+    else:
+      print(e)
