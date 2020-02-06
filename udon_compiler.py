@@ -5,6 +5,7 @@ import ast
 import re
 import pprint as pp
 import argparse
+import traceback
 from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from libs.my_type import *
@@ -667,6 +668,7 @@ if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser(description='UdonPie language Udon Assembly compiler', add_help=True)
   arg_parser.add_argument('input', help='input UdonPie source code path (ex: .\example.py)')
   arg_parser.add_argument('output', help='output Udon Assembly code path (ex: .\example.uasm)')
+  arg_parser.add_argument('--cdbg',  help='for compiler debugging', action='store_true')
   args = arg_parser.parse_args()
 
   try:
@@ -679,6 +681,8 @@ if __name__ == '__main__':
     f.write(asm)
     f.close()
   except Exception as e:
-    t, v, tb = sys.exc_info()
-    print(traceback.format_exception(t,v,tb))
-    print(traceback.format_tb(e.__traceback__))
+    if args.cdbg:
+      t, v, tb = sys.exc_info()
+      print(traceback.format_exc())
+    else:
+      print(e)
