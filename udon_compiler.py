@@ -402,6 +402,16 @@ class UdonCompiler:
         raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: There is no value on the right side of Binary Expression.')
       left_var_type = self.var_table.get_var_type(binop_left_var_name)
       right_var_type = self.var_table.get_var_type(binop_right_var_name)
+      special_mult_list = ["UnityEngineColor", "UnityEngineMatrix4x4", 'UnityEngineQuaternion', 'UnityEngineVector2', 'UnityEngineVector3', 'UnityEngineVector4']
+      # Check if this is a special case of Udon's unstandardized naming for mulitiplication, and if so flip correctly.
+      if left_var_type is "SystemSingle" and right_var_type in special_mult_list:
+        # This flips the left and right operand, to ensure ability of commutative multiplication
+        flip_temp = binop_right_var_name
+        binop_right_var_name = binop_left_var_name
+        binop_left_var_name = flip_temp
+        flip_temp = right_var_type
+        right_var_type = left_var_type
+        left_var_type = flip_temp
       # + 
       if type(bin_expr.op) is ast.Add:
         func_name = 'op_Addition'
@@ -411,7 +421,7 @@ class UdonCompiler:
       # *
       elif type(bin_expr.op) is ast.Mult:
         # Special case: Udon is not consistent in naming, and for primitives it is therefore called op_Multiplication rather than op_Multiply.
-        if left_var_type in ["UnityEngineColor", "UnityEngineMatrix4x4", 'UnityEngineQuaternion', 'UnityEngineVector2', 'UnityEngineVector3', 'UnityEngineVector4']:
+        if left_var_type in special_mult_list:
           func_name = 'op_Multiply'
         else:
           func_name = 'op_Multiplication'
