@@ -370,7 +370,7 @@ class UdonCompiler:
       if type(unary_expr.op) is ast.USub:
         func_name = 'op_UnaryMinus'
       # not
-      if type(unary_expr.op) is ast.Not:
+      elif type(unary_expr.op) is ast.Not:
         func_name = 'op_UnaryNegation'
       else:
         raise Exception(f'{unary_expr.lineno}:{unary_expr.col_offset} {self.print_ast(unary_expr)}: Unsupported unary operator.')
