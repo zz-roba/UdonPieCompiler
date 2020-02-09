@@ -204,7 +204,7 @@ class UdonCompiler:
     elif type(stmt) is ast.FunctionDef:
       # FORCE CAST
       funcdef_stmt: ast.FunctionDef = cast(ast.FunctionDef, stmt)
-      func_name:str = funcdef_stmt.name
+      func_name:FuncName = FuncName(funcdef_stmt.name)
       # Functions starting with an underscore are events
       if func_name.startswith('_'):
         event_name: EventName = EventName(func_name)
@@ -230,11 +230,11 @@ class UdonCompiler:
 
       # Otherwise, the defined function
       else:
-        self.uasm.add_label_crrent_addr(LabelName(func_name))
         arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
         self.uasm.env_vars = arg_var_names 
         # FORCE CAST, NO CHECK
         arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
+        self.uasm.add_label_crrent_addr(LabelName(self.def_func_table.get_function_id(func_name, arg_types)))
         # FORCE CAST, NO CHECK
         arg_var_name_types: List[Tuple[VarName, UdonTypeName]] = zip(arg_var_names, arg_types) # type: ignore
         ret_type: UdonTypeName

@@ -105,6 +105,10 @@ Are the argument types correct?')
     ret_type, _ = self.func_dict[func_name, arg_types]
     return ret_type
 
+  def get_function_id(self, func_name: FuncName, arg_types: List[UdonTypeName]) -> str:
+    # ex) function id of func(:SystemInt32, SystemFloat) is "func_SystemInt32_SystemFloat"
+    return f'{func_name}__{"_".join(arg_types)}'
+
 
 class UdonMethodTable:
   udon_method_dict: Dict[

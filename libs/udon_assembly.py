@@ -217,7 +217,7 @@ class UdonAssembly:
     # Push arguments
     self.push_vars(arg_var_names)
     # goto func label
-    self.jump_label(LabelName(func_name))
+    self.jump_label(LabelName(self.def_func_table.get_function_id(func_name, arg_var_types)))
     self.add_label_crrent_addr(ret_call_label)
 
     if ret_type_name != UdonTypeName('SystemVoid'):
