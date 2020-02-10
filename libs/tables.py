@@ -23,10 +23,19 @@ class VarTable:
   """
   var_dict: Dict[VarName, Tuple[UdonTypeName, str]]
   global_var_names: List[VarName]
+  current_func_id: Optional[LabelName]
 
   def __init__(self) -> None:
     self.var_dict = {}
     self.global_var_names = []
+    self.current_func_id = None
+
+  def resolve_varname(self, var_name: VarName) -> VarName:
+    tmp_varname = VarName(f'{self.current_func_id}_{var_name}')
+    if (self.current_func_id is not None) and (tmp_varname in self.var_dict):
+      return tmp_varname
+    else:
+      return var_name
 
   def add_var(self, var_name: VarName, type_name: UdonTypeName, init_value_str: str) -> None:
     if var_name in self.var_dict:

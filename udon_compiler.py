@@ -251,11 +251,14 @@ class UdonCompiler:
 
       # Otherwise, the defined function
       else:
-        arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
-        self.uasm.env_vars = arg_var_names 
         # FORCE CAST, NO CHECK
         arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
-        self.uasm.add_label_crrent_addr(LabelName(self.def_func_table.get_function_id(func_name, arg_types)))
+        func_label_name = LabelName(self.def_func_table.get_function_id(func_name, arg_types))
+        arg_var_names: List[VarName]  = [VarName(f'{func_label_name}_{arg.arg}') for arg in funcdef_stmt.args.args]
+        self.uasm.env_vars = arg_var_names
+        #########################################################
+        self.var_table.current_func_id = func_label_name
+        self.uasm.add_label_crrent_addr(func_label_name)
         # FORCE CAST, NO CHECK
         arg_var_name_types: List[Tuple[VarName, UdonTypeName]] = zip(arg_var_names, arg_types) # type: ignore
         ret_type: UdonTypeName
@@ -278,7 +281,9 @@ class UdonCompiler:
         # Return
         self.uasm.jump_ret_addr()
         self.uasm.env_vars = []
-        current_func_ret_type = None
+
+        self.var_table.current_func_id = None
+        self.current_func_ret_type = None
     # AugAssign Statement
     # | AugAssign(expr target, operator op, expr value) - x += 1
     elif type(stmt) is ast.AugAssign:
