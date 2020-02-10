@@ -129,7 +129,8 @@ class UdonCompiler:
       # left expression
       if type(assign.targets[0]) is ast.Name:
         # FORCE CAST
-        dist_var_name: VarName = VarName(cast(ast.Name, assign.targets[0]).id)
+        dist_var_name: VarName = self.var_table.resolve_varname(
+          VarName(cast(ast.Name, assign.targets[0]).id))
         self.uasm.assign(dist_var_name, src_var_name)
       elif type(assign.targets[0]) is ast.Subscript:
         # FORCE CAST
@@ -256,7 +257,6 @@ class UdonCompiler:
         func_label_name = LabelName(self.def_func_table.get_function_id(func_name, arg_types))
         arg_var_names: List[VarName]  = [VarName(f'{func_label_name}_{arg.arg}') for arg in funcdef_stmt.args.args]
         self.uasm.env_vars = arg_var_names
-        #########################################################
         self.var_table.current_func_id = func_label_name
         self.uasm.add_label_crrent_addr(func_label_name)
         # FORCE CAST, NO CHECK
@@ -385,7 +385,7 @@ class UdonCompiler:
     elif type(expr) is ast.Name:
       # FORCE CAST
       name: ast.Name = cast(ast.Name, expr)
-      return VarName(name.id)
+      return self.var_table.resolve_varname(VarName(name.id))
 
     # Call Expression
     # | Call(expr func, expr* args, keyword* keywords)
