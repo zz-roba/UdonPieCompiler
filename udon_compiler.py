@@ -214,6 +214,10 @@ class UdonCompiler:
       if self.current_continue_label is None:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "continopiop" statement can only be used inside a loop.')
       self.uasm.jump_label(self.current_continue_label)
+      
+    # | Pass
+    elif type(stmt) is ast.Pass:
+      pass
     # Function definition
     # FunctionDef(identifier name, arguments args,
     #  stmt* body, expr* decorator_list, expr? returns,
