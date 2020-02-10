@@ -23,6 +23,8 @@ class UdonCompiler:
   udon_method_table: UdonMethodTable
   node: ast.AST
   current_func_ret_type: Optional[UdonTypeName]
+  current_break_label: Optional[LabelName]
+  current_continue_label: Optional[LabelName]
 
   def __init__(self, code: str) -> None:
     self.var_table = VarTable()
@@ -30,7 +32,9 @@ class UdonCompiler:
     self.uasm = UdonAssembly(self.var_table, self.def_func_table)
     self.udon_method_table = UdonMethodTable()
     self.current_func_ret_type = None
-    
+    self.current_break_label = None
+    self.current_continue_label = None
+
     # IGNORE annotation
     # I want to give the editor a hint as Python code, but write lines that I don't want to parse.
     # Delete the line containing IGNORE_LINE for that purpose.
@@ -179,6 +183,8 @@ class UdonCompiler:
       while_stmt: ast.While = cast(ast.While, stmt) # FORCE CAST
       while_label = LabelName(self.uasm.get_next_id('while_label'))
       while_end_label = LabelName(self.uasm.get_next_id('while_end_label'))
+      self.current_break_label = while_end_label
+      self.current_continue_label = while_label
       # while_label:
       self.uasm.add_label_crrent_addr(while_label)
       test_result_var_name = self.eval_expr(while_stmt.test)
@@ -196,7 +202,18 @@ class UdonCompiler:
       self.uasm.jump_label(while_label)
       # while_end:
       self.uasm.add_label_crrent_addr(while_end_label)
-
+      self.current_break_label = None
+      self.current_continue_label = None
+    # | Break
+    elif type(stmt) is ast.Break:
+      if self.current_break_label is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "break" statement can only be used inside a loop.')
+      self.uasm.jump_label(self.current_break_label)
+    # | Continue
+    elif type(stmt) is ast.Continue:
+      if self.current_continue_label is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "continopiop" statement can only be used inside a loop.')
+      self.uasm.jump_label(self.current_continue_label)
     # Function definition
     # FunctionDef(identifier name, arguments args,
     #  stmt* body, expr* decorator_list, expr? returns,
