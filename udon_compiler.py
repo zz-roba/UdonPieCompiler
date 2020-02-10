@@ -439,12 +439,12 @@ class UdonCompiler:
       # Check if this is a special case of Udon's unstandardized naming for mulitiplication, and if so flip correctly.
       if left_var_type is "SystemSingle" and right_var_type in special_mult_list:
         # This flips the left and right operand, to ensure ability of commutative multiplication
-        flip_temp = binop_right_var_name
+        flip_var_temp = binop_right_var_name
         binop_right_var_name = binop_left_var_name
-        binop_left_var_name = flip_temp
-        flip_temp = right_var_type
+        binop_left_var_name = flip_var_temp
+        flip_type_temp = right_var_type
         right_var_type = left_var_type
-        left_var_type = flip_temp
+        left_var_type = flip_type_temp
       # + 
       if type(bin_expr.op) is ast.Add:
         func_name = 'op_Addition'
