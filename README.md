@@ -12,13 +12,19 @@ https://zz-roba.booth.pm/items/1789601
 
 
 ## Features
-* Operators(only `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`)
-* `If` / `While` / `return` Statments
+* Static typing (UdonPie differs from Python in that all variable types are determined at compile time.)
+* Operators (
+  `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `>>`, `<<`,
+  `==`, `!=`, `<`, `>`, `<=`, `>=`,
+  `and`, `or`, `not`)
+* `if` / `while` / `return` / `break` / `continue`  statments
+* Assing statments(`+=`, `-=` `*=`, `/=`, `&=`, `|=`, `^=`, `>>=`, `<<=`)
 * Udon Extern API call
 * User-defined function
   (Still, functions cannot be recursive.)
 * Simple type inference / checking
 * Force cast
+* Function overload
 * The `this_trans` keyword represents this.UnityEngineTransform object for that object
 * The `this_gameObj` keyword represents this.UnityEngineGameObject object for that object
 * Built-in function `instantiate`
@@ -30,12 +36,10 @@ https://zz-roba.booth.pm/items/1789601
    (`How to use Udon Extern completion`)
 * Array subscript access
  
-
-
 ## Requirement
 * Python 3.6.8
-* VRCSDK3 (Testing with VRCSDK3-2020.01.14.10.40.unitypackage)
-* UDONSDK (Testing with UDONSDK-2020.01.14.10.47_Public.unitypackage)
+* VRCSDK3 (Testing with VRCSDK3-2020.02.03.22.36.unitypackage)
+* UDONSDK (Testing with UDONSDK-2020.02.03.11.56_Public.unitypackage)
 * `pip install -r requirements.txt`
 
 ## Roadmap
@@ -62,20 +66,21 @@ optional arguments:
 ``` py
 # fizzbuzz
 def _start():
+  # `I` is set to the SystemInt32 type in type inference.
   i = 1
   # Control Statments are only If and While
   while i <= 100:
     # Logical operators ("and" and "or") cannot be written consecutively
     # ("A and B and C" must be written as "(A and B) and C").
-    if i == i / 3 * 3 and i == i / 5 * 5:
+    if i % 3 == 0 and i % 5 == 0:
       UnityEngineDebug.Log(SystemObject('fizzbuzz.'))
-    elif i == i / 3 * 3:
+    elif i % 3 == 0:
       UnityEngineDebug.Log(SystemObject('fizz.'))
-    elif i == i / 5 * 5:
+    elif i % 5 == 0:
       UnityEngineDebug.Log(SystemObject('buzz.'))
     else:
       UnityEngineDebug.Log(SystemObject(i))
-    i = i + 1
+    i += 1
 ```
 
 
@@ -134,8 +139,8 @@ def _start():
         UnityEngineVector3.ctor(tmp_x, 0.0, tmp_y)
       )
       cubes[10 * y_i + x_i] = cube_obj
-      x_i = x_i + 1
-    y_i = y_i + 1 
+      x_i += 1
+    y_i += 1 
 
 # MouseDown　Event
 def _onMouseDown():
@@ -144,23 +149,43 @@ def _onMouseDown():
     # Color change randomly
     cube_renda = UnityEngineRenderer(cubes[cube_i].GetComponent('Renderer'))
     cube_renda.get_material().set_color(UnityEngineRandom.ColorHSV())
-    cube_i = cube_i + 1 
+    cube_i += 1 
 ```
+```py
+# OnPlayerJoined Event
+def _onPlayerJoined(playerApi: VRCSDKBaseVRCPlayerApi):
+  UnityEngineDebug.Log(SystemObject(playerApi))
+```
+
 
 ## How to use Udon Extern completion
 * Extract the `udon_classes.zip` or` tools / udon_classes.zip` file.
 * Put the `udon_classes` directory in the same directory as the UdonPie source code.
-* Put `from. Udon_classes import *` at the top of UdonPie source code. \ 
+* Put `from. Udon_classes import * # IGNORE_LINE` at the top of UdonPie source code.  \
   (The UdonPie compiler ignores `Import` and` From`, which are used as input completion hints in the editor.)
 * Open the UdonPie source code in an input-completion editor such as PyCharm or VSCode.
 
 
+## UdonPie Usefull Links
+### [Getting Started with UdonPie - the Python-based UDON-assembly compiler](https://ask.vrchat.com/t/getting-started-with-udonpie-the-python-based-udon-assembly-compiler/384)
+Guide to getting started with UdonPie
+
+### [Pile o' Pies](https://www.notion.so/Pile-o-Pies-3cab00c83ff44bb080821fa4e1cade43)
+A collection of small UdonPie-based UDON programs
+
+### [Udon Extern Search](https://7colou.red/UdonExternSearch/)
+
+Service to search Udon Extern API
+
 ## Similar projects
 
-### cannorin / SAnuki Intermediate Language for Udon
-https://github.com/cannorin/sanuki
+### [cannorin / SAnuki Intermediate Language for Udon](https://github.com/cannorin/sanuki)
+Intermediate Language for Udon Assembly
+
+### [Doshik language custom compiler](https://ask.vrchat.com/t/doshik-language-custom-compiler/369)
 
 ## Thanks
+
 ### cannorin / UdonTest
 https://github.com/cannorin/UdonTest
 * I used this project in order to make UdonAPI table `udon_funcs_data.py`.
@@ -169,7 +194,20 @@ https://github.com/cannorin/UdonTest
 * He created a `udon_classes` file that implements Udon extern completion.
 
 ### [@Foorack](https://twitter.com/Foorack)
-* He has added an array subscript to the UdonPie compiler.
+* He has added 
+  * Array subscript.
+  * binary operators(`&`, `|`, `^`, `>>`, `<<`)
+  * Augmented assignment statements(`+=`, `-=` `*=`, `/=`, `&=`, `|=`, `^=`, `>>=`, `<<=`)
+* And, so many fixes
+
+### Chiel Douwes (https://github.com/chieltbest)
+* He fixed the reference processing of resource_path.
+
+### [@orels1_](https://twitter.com/orels1_)
+*  He has created a detailed UdonPie guide. \
+[Getting Started with UdonPie - the Python-based UDON-assembly compiler](https://ask.vrchat.com/t/getting-started-with-udonpie-the-python-based-udon-assembly-compiler/384/3)
+* He has created many UdonPie code examples. \
+[Pile o' Pies](https://www.notion.so/Pile-o-Pies-3cab00c83ff44bb080821fa4e1cade43)
 
 ### cannorin / UdonExternSearch
 https://github.com/cannorin/UdonExternSearch
@@ -182,8 +220,6 @@ make_exe.bat
 (The exe file is generated in "dist / UdonPie.exe".)
 ```
 
-## History
-0.0.0 : first
 ## Author
 
 [zz_roba](https://github.com/tcnksm)

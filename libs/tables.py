@@ -15,7 +15,7 @@ from libs.udon_types import *
 def resource_path(relative_path: str) -> str:
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path) # type: ignore
-    return os.path.join(os.path.abspath("."), relative_path)
+    return os.path.join(os.path.dirname(__file__), "..", relative_path)
 
 class VarTable:
   """
@@ -23,10 +23,19 @@ class VarTable:
   """
   var_dict: Dict[VarName, Tuple[UdonTypeName, str]]
   global_var_names: List[VarName]
+  current_func_id: Optional[LabelName]
 
   def __init__(self) -> None:
     self.var_dict = {}
     self.global_var_names = []
+    self.current_func_id = None
+
+  def resolve_varname(self, var_name: VarName) -> VarName:
+    tmp_varname = VarName(f'{self.current_func_id}_{var_name}')
+    if (self.current_func_id is not None) and (tmp_varname in self.var_dict):
+      return tmp_varname
+    else:
+      return var_name
 
   def add_var(self, var_name: VarName, type_name: UdonTypeName, init_value_str: str) -> None:
     if var_name in self.var_dict:
@@ -104,6 +113,10 @@ class DefFuncTable:
 Are the argument types correct?')
     ret_type, _ = self.func_dict[func_name, arg_types]
     return ret_type
+
+  def get_function_id(self, func_name: FuncName, arg_types: List[UdonTypeName]) -> str:
+    # ex) function id of func(:SystemInt32, SystemFloat) is "func_SystemInt32_SystemFloat"
+    return f'{func_name}__{"_".join(arg_types)}'
 
 
 class UdonMethodTable:

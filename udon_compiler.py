@@ -5,6 +5,7 @@ import ast
 import re
 import pprint as pp
 import argparse
+import traceback
 from typing import *
 from typing_extensions import Literal # 3.8: typing.Literal
 from libs.my_type import *
@@ -21,13 +22,19 @@ class UdonCompiler:
   def_func_table: DefFuncTable
   udon_method_table: UdonMethodTable
   node: ast.AST
+  current_func_ret_type: Optional[UdonTypeName]
+  current_break_label: Optional[LabelName]
+  current_continue_label: Optional[LabelName]
 
   def __init__(self, code: str) -> None:
     self.var_table = VarTable()
     self.def_func_table = DefFuncTable()
     self.uasm = UdonAssembly(self.var_table, self.def_func_table)
     self.udon_method_table = UdonMethodTable()
-    
+    self.current_func_ret_type = None
+    self.current_break_label = None
+    self.current_continue_label = None
+
     # IGNORE annotation
     # I want to give the editor a hint as Python code, but write lines that I don't want to parse.
     # Delete the line containing IGNORE_LINE for that purpose.
@@ -122,13 +129,16 @@ class UdonCompiler:
       # left expression
       if type(assign.targets[0]) is ast.Name:
         # FORCE CAST
-        dist_var_name: VarName = VarName(cast(ast.Name, assign.targets[0]).id)
+        dist_var_name: VarName = self.var_table.resolve_varname(
+          VarName(cast(ast.Name, assign.targets[0]).id))
         self.uasm.assign(dist_var_name, src_var_name)
       elif type(assign.targets[0]) is ast.Subscript:
         # FORCE CAST
         subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
         # FORCE CAST, NO CHECK
-        # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+        if type(subscript_expr.slice) is not ast.Index:
+          raise Exception(f'{subscript_expr.lineno}:{subscript_expr.col_offset} {self.print_ast(subscript_expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+        
         index_value:ast.expr  = subscript_expr.slice.value # type: ignore
         _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
         self.eval_expr(_call)
@@ -174,6 +184,8 @@ class UdonCompiler:
       while_stmt: ast.While = cast(ast.While, stmt) # FORCE CAST
       while_label = LabelName(self.uasm.get_next_id('while_label'))
       while_end_label = LabelName(self.uasm.get_next_id('while_end_label'))
+      self.current_break_label = while_end_label
+      self.current_continue_label = while_label
       # while_label:
       self.uasm.add_label_crrent_addr(while_label)
       test_result_var_name = self.eval_expr(while_stmt.test)
@@ -191,7 +203,22 @@ class UdonCompiler:
       self.uasm.jump_label(while_label)
       # while_end:
       self.uasm.add_label_crrent_addr(while_end_label)
-
+      self.current_break_label = None
+      self.current_continue_label = None
+    # | Break
+    elif type(stmt) is ast.Break:
+      if self.current_break_label is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "break" statement can only be used inside a loop.')
+      self.uasm.jump_label(self.current_break_label)
+    # | Continue
+    elif type(stmt) is ast.Continue:
+      if self.current_continue_label is None:
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "continopiop" statement can only be used inside a loop.')
+      self.uasm.jump_label(self.current_continue_label)
+      
+    # | Pass
+    elif type(stmt) is ast.Pass:
+      pass
     # Function definition
     # FunctionDef(identifier name, arguments args,
     #  stmt* body, expr* decorator_list, expr? returns,
@@ -199,7 +226,7 @@ class UdonCompiler:
     elif type(stmt) is ast.FunctionDef:
       # FORCE CAST
       funcdef_stmt: ast.FunctionDef = cast(ast.FunctionDef, stmt)
-      func_name:str = funcdef_stmt.name
+      func_name:FuncName = FuncName(funcdef_stmt.name)
       # Functions starting with an underscore are events
       if func_name.startswith('_'):
         event_name: EventName = EventName(func_name)
@@ -225,11 +252,13 @@ class UdonCompiler:
 
       # Otherwise, the defined function
       else:
-        self.uasm.add_label_crrent_addr(LabelName(func_name))
-        arg_var_names: List[VarName]  = [VarName(arg.arg) for arg in funcdef_stmt.args.args]
-        self.uasm.env_vars = arg_var_names 
         # FORCE CAST, NO CHECK
         arg_types: List[UdonTypeName] = [UdonTypeName(arg.annotation.id) for arg in funcdef_stmt.args.args]  # type: ignore
+        func_label_name = LabelName(self.def_func_table.get_function_id(func_name, arg_types))
+        arg_var_names: List[VarName]  = [VarName(f'{func_label_name}_{arg.arg}') for arg in funcdef_stmt.args.args]
+        self.uasm.env_vars = arg_var_names
+        self.var_table.current_func_id = func_label_name
+        self.uasm.add_label_crrent_addr(func_label_name)
         # FORCE CAST, NO CHECK
         arg_var_name_types: List[Tuple[VarName, UdonTypeName]] = zip(arg_var_names, arg_types) # type: ignore
         ret_type: UdonTypeName
@@ -239,7 +268,7 @@ class UdonCompiler:
           ret_type = funcdef_stmt.returns.id  # type: ignore
         else:
           ret_type = UdonTypeName('SystemVoid')
-
+        self.current_func_ret_type = ret_type # for type checking return expr 
         # Add argment tmp variables
         for arg_var_name, arg_type in arg_var_name_types:
           self.var_table.add_var(arg_var_name, arg_type, 'null')
@@ -252,13 +281,16 @@ class UdonCompiler:
         # Return
         self.uasm.jump_ret_addr()
         self.uasm.env_vars = []
+
+        self.var_table.current_func_id = None
+        self.current_func_ret_type = None
     # AugAssign Statement
     # | AugAssign(expr target, operator op, expr value) - x += 1
     elif type(stmt) is ast.AugAssign:
       # FORCE CAST
       augassign_stmt: ast.AugAssign = cast(ast.AugAssign, stmt)
       augassign_expr: ast.expr
-      if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod]:
+      if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.BitAnd, ast.BitOr, ast.BitXor, ast.LShift, ast.RShift]:
         augassign_expr = ast.BinOp(left=augassign_stmt.target, op=augassign_stmt.op, right=augassign_stmt.value)
       else:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown AugAssign operand {type(augassign_stmt.op)}')
@@ -279,9 +311,15 @@ class UdonCompiler:
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
         # Push Retern value
         self.uasm.push_var(ret_var_name)
-        # TODO: Add return type check
-        # ret_var_type = self.var_table.get_var_type(ret_var_name)
-        # if ret_var_type != ...
+        ret_var_type = self.var_table.get_var_type(ret_var_name)
+        if self.current_func_ret_type != None and ret_var_type != self.current_func_ret_type:
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Return expression type "{ret_var_type}" does not match return type "{self.current_func_ret_type}" in the function definition.')
+      
+      # If return statement without expression
+      else:
+        if self.current_func_ret_type != None and self.current_func_ret_type != UdonTypeName('SystemVoid'):
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: ReThis function returns a value of type "{self.current_func_ret_type}", but did not return a value in the return statement.')
+
       # Return
       self.uasm.jump_ret_addr()
     # The compiler skips Import and ImportFrom statements to complete the editor using Python class files.
@@ -347,7 +385,7 @@ class UdonCompiler:
     elif type(expr) is ast.Name:
       # FORCE CAST
       name: ast.Name = cast(ast.Name, expr)
-      return VarName(name.id)
+      return self.var_table.resolve_varname(VarName(name.id))
 
     # Call Expression
     # | Call(expr func, expr* args, keyword* keywords)
@@ -370,7 +408,7 @@ class UdonCompiler:
       if type(unary_expr.op) is ast.USub:
         func_name = 'op_UnaryMinus'
       # not
-      if type(unary_expr.op) is ast.Not:
+      elif type(unary_expr.op) is ast.Not:
         func_name = 'op_UnaryNegation'
       else:
         raise Exception(f'{unary_expr.lineno}:{unary_expr.col_offset} {self.print_ast(unary_expr)}: Unsupported unary operator.')
@@ -402,6 +440,16 @@ class UdonCompiler:
         raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: There is no value on the right side of Binary Expression.')
       left_var_type = self.var_table.get_var_type(binop_left_var_name)
       right_var_type = self.var_table.get_var_type(binop_right_var_name)
+      special_mult_list = ["UnityEngineColor", "UnityEngineMatrix4x4", 'UnityEngineQuaternion', 'UnityEngineVector2', 'UnityEngineVector3', 'UnityEngineVector4']
+      # Check if this is a special case of Udon's unstandardized naming for mulitiplication, and if so flip correctly.
+      if left_var_type is "SystemSingle" and right_var_type in special_mult_list:
+        # This flips the left and right operand, to ensure ability of commutative multiplication
+        flip_var_temp = binop_right_var_name
+        binop_right_var_name = binop_left_var_name
+        binop_left_var_name = flip_var_temp
+        flip_type_temp = right_var_type
+        right_var_type = left_var_type
+        left_var_type = flip_type_temp
       # + 
       if type(bin_expr.op) is ast.Add:
         func_name = 'op_Addition'
@@ -410,15 +458,35 @@ class UdonCompiler:
         func_name = 'op_Subtraction'
       # *
       elif type(bin_expr.op) is ast.Mult:
-        func_name = 'op_Multiplication'
+        # Special case: Udon is not consistent in naming, and for primitives it is therefore called op_Multiplication rather than op_Multiply.
+        if left_var_type in special_mult_list:
+          func_name = 'op_Multiply'
+        else:
+          func_name = 'op_Multiplication'
       # /
       elif type(bin_expr.op) is ast.Div:
         func_name = 'op_Division'
       # %
       elif type(bin_expr.op) is ast.Mod:
         func_name = 'op_Remainder'
+      # &
+      elif type(bin_expr.op) is ast.BitAnd:
+        func_name = 'op_LogicalAnd'
+      # |
+      elif type(bin_expr.op) is ast.BitOr:
+        func_name = 'op_LogicalOr'
+      # ^
+      elif type(bin_expr.op) is ast.BitXor:
+        func_name = 'op_LogicalXor'
+      # <<
+      elif type(bin_expr.op) is ast.LShift:
+        func_name = 'op_LeftShift'
+      # >>
+      elif type(bin_expr.op) is ast.RShift:
+        func_name = 'op_RightShift'
+      
       else:
-        raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator')
+        raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator {type(bin_expr.op)}')
       ret_type_extern_str = self.udon_method_table.get_ret_type_extern_str(
         'StaticFunc',
         UdonTypeName(left_var_type),
@@ -534,7 +602,10 @@ class UdonCompiler:
     elif type(expr) is ast.Subscript:
       # FORCE CAST
       subscript_expr: ast.Subscript = cast(ast.Subscript, expr)
-      # TODO: Add checking type(subscript_expr.slice) is ast.Index 
+      # checking type(subscript_expr.slice) is ast.Index
+      if type(subscript_expr.slice) is not ast.Index:
+        raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+
       index_value:ast.expr  = subscript_expr.slice.value # type: ignore
       _call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[index_value])
       return self.eval_call(_call)
@@ -667,6 +738,7 @@ if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser(description='UdonPie language Udon Assembly compiler', add_help=True)
   arg_parser.add_argument('input', help='input UdonPie source code path (ex: .\example.py)')
   arg_parser.add_argument('output', help='output Udon Assembly code path (ex: .\example.uasm)')
+  arg_parser.add_argument('--cdbg',  help='for compiler debugging', action='store_true')
   args = arg_parser.parse_args()
 
   try:
@@ -679,6 +751,8 @@ if __name__ == '__main__':
     f.write(asm)
     f.close()
   except Exception as e:
-    t, v, tb = sys.exc_info()
-    print(traceback.format_exception(t,v,tb))
-    print(traceback.format_tb(e.__traceback__))
+    if args.cdbg:
+      t, v, tb = sys.exc_info()
+      print(traceback.format_exc())
+    else:
+      print(e)
