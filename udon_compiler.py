@@ -45,6 +45,8 @@ class UdonCompiler:
     for code_line in code_lines:
       if 'IGNORE_LINE' not in code_line:
         replaced_code += f'{code_line}\n'
+      else:
+        replaced_code += f'\n'
     self.node = ast.parse(replaced_code)
 
   def make_uasm_code(self) -> str:
