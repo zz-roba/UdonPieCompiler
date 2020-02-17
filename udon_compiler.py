@@ -70,9 +70,8 @@ class UdonCompiler:
     ret_code = self.uasm.replace_tmp_adrr(ret_code)
     return ret_code
 
-  def print_ast(self, node: ast.AST):
-    # print(self.print_ast(node))
-    return
+  def print_ast(self, node: ast.AST) -> str:
+    return node.__class__.__name__
 
   def pre_check_func_defs(self, body: List[ast.stmt]) -> None:
     stmt: ast.stmt
@@ -215,7 +214,7 @@ class UdonCompiler:
     # | Continue
     elif type(stmt) is ast.Continue:
       if self.current_continue_label is None:
-        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "continopiop" statement can only be used inside a loop.')
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: The "continue" statement can only be used inside a loop.')
       self.uasm.jump_label(self.current_continue_label)
       
     # | Pass
@@ -295,7 +294,7 @@ class UdonCompiler:
       if type(augassign_stmt.op) in [ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.BitAnd, ast.BitOr, ast.BitXor, ast.LShift, ast.RShift]:
         augassign_expr = ast.BinOp(left=augassign_stmt.target, op=augassign_stmt.op, right=augassign_stmt.value)
       else:
-        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown AugAssign operand {type(augassign_stmt.op)}')
+        raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Unknown AugAssign operand {type(augassign_stmt.op)}.')
       self.eval_stmt(ast.Assign(targets=[augassign_stmt.target], value=augassign_expr))
 
     # Return Statment
@@ -310,7 +309,7 @@ class UdonCompiler:
         # Eval return expression
         ret_var_name = self.eval_expr(return_stmt.value)
         if ret_var_name is None:
-          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression')
+          raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: Missing value for return expression.')
         # Push Retern value
         self.uasm.push_var(ret_var_name)
         ret_var_type = self.var_table.get_var_type(ret_var_name)
@@ -413,7 +412,7 @@ class UdonCompiler:
       elif type(unary_expr.op) is ast.Not:
         func_name = 'op_UnaryNegation'
       else:
-        raise Exception(f'{unary_expr.lineno}:{unary_expr.col_offset} {self.print_ast(unary_expr)}: Unsupported unary operator.')
+        raise Exception(f'{unary_expr.lineno}:{unary_expr.col_offset} {self.print_ast(unary_expr)}: Unsupported unary operator {type(unary_expr.op)}.')
       
       ret_type_extern_str = self.udon_method_table.get_ret_type_extern_str(
         'StaticFunc',
@@ -488,7 +487,7 @@ class UdonCompiler:
         func_name = 'op_RightShift'
       
       else:
-        raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator {type(bin_expr.op)}')
+        raise Exception(f'{bin_expr.lineno}:{bin_expr.col_offset} {self.print_ast(bin_expr)}: Unsupported binary operator {type(bin_expr.op)}.')
       ret_type_extern_str = self.udon_method_table.get_ret_type_extern_str(
         'StaticFunc',
         UdonTypeName(left_var_type),
@@ -620,7 +619,7 @@ class UdonCompiler:
     arg_var_names: List[Optional[VarName]] = [self.eval_expr(arg_var_name) for arg_var_name in call.args]
     for i, arg_var_name in enumerate(arg_var_names):
       if arg_var_name is None:
-        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: There is no value on the arg({i}) Expression.')
+        raise Exception(f'{call.func.lineno}:{call.func.col_offset} {self.print_ast(call)}: There is no value on the arg({i}) Expression.')
 
     # FORCE CAST
     arg_var_types: List[UdonTypeName] = [self.var_table.get_var_type(arg_var_name) for arg_var_name in arg_var_names] # type: ignore
@@ -634,7 +633,7 @@ class UdonCompiler:
       # FORCE CAST
       return self.eval_call_without_dot(call, arg_var_names, arg_var_types) # type: ignore
     else:
-      raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: Unsupported binary compare operator.')
+      raise Exception(f'{self.print_ast(call)}: Unsupported function type operator {type(call.func)}')
 
   def eval_call_with_dot(self, call: ast.Call, arg_var_names: List[VarName], arg_var_types: List[UdonTypeName]) -> Optional[VarName]:
     func_expr: ast.expr = cast(ast.expr, call.func)
@@ -675,7 +674,7 @@ class UdonCompiler:
           self.uasm.call_extern(extern_str, arg_var_names) 
           return None
       else:
-        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: Udon method {module_type}.{udon_method_name} not found.') 
+        raise Exception(f'{call.func.value.lineno}:{call.func.value.col_offset} {self.print_ast(call)}: Udon method "{module_type}.{udon_method_name}" not found. Is the variable "{module_type}" spelled correctly?') 
       
     # InstanceFunc
     # FORCE CAST, NO CHECK
@@ -701,9 +700,7 @@ class UdonCompiler:
           self.uasm.call_extern(extern_str, [inst_var_name] + arg_var_names)
           return None
       else:
-        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: Not Found {inst_var_type}.{udon_method_name}{tuple(arg_var_types)} instance function. ')
-    # else:
-    #   raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: Unsupported function format.')
+        raise Exception(f'{call.func.value.lineno}:{call.func.value.col_offset} {self.print_ast(call)}: Not Found {inst_var_type}.{udon_method_name}{tuple(arg_var_types)} instance function. ')
     return call_result_var_name
 
   def eval_call_without_dot(self, call: ast.Call, arg_var_names: List[VarName], arg_var_types: List[UdonTypeName]) -> Optional[VarName]:
@@ -712,7 +709,7 @@ class UdonCompiler:
     # Embedded functions
     if func_name == 'instantiate':
       if len(arg_var_names) != 1:
-        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: instantiate must have exactly one argument.')
+        raise Exception(f'{call.func.lineno}:{call.func.col_offset} {self.print_ast(call)}: instantiate must have exactly one argument.')
       arg_var_name: VarName = arg_var_names[0]
       instantiate_var_name = VarName(self.uasm.get_next_id('instantiate'))
       self.var_table.add_var(
@@ -726,7 +723,7 @@ class UdonCompiler:
       cast_type = UdonTypeName(func_name)
       cast_var_name = VarName(self.uasm.get_next_id('cast'))
       if len(arg_var_names) != 1:
-        raise Exception(f'{call.lineno}:{call.col_offset} {self.print_ast(call)}: A cast argument must be exactly one.')
+        raise Exception(f'{call.func.lineno}:{call.func.col_offset} {self.print_ast(call)}: A cast argument must be exactly one.')
       arg_var_name = arg_var_names[0]
       self.var_table.add_var(cast_var_name, cast_type, 'null')
       self.uasm.assign(cast_var_name, arg_var_name)
