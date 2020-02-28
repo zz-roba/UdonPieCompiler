@@ -1,4 +1,5 @@
-from. Udon_classes import *  # IGNORE_LINE
+from .UdonPie import *  # IGNORE_LINE
 
-def _onPlayerJoined(playerApi: VRCSDKBaseVRCPlayerApi):
-  UnityEngineDebug.Log(SystemObject(playerApi))
+
+def _onPlayerJoined(playerApi: VRCPlayerApi):
+    Debug.Log(Object(playerApi))

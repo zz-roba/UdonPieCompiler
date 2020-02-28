@@ -51,10 +51,10 @@ class UdonCompiler:
 
   def make_uasm_code(self) -> str:
     # return address
-    self.var_table.add_var(VarName('ret_addr'), UdonTypeName('SystemUInt32'), '0xFFFFFF')
+    self.var_table.add_var(VarName('ret_addr'), UdonTypeName('UInt32'), '0xFFFFFFFF')
     # this
-    self.var_table.add_var(VarName('this_trans'), UdonTypeName('UnityEngineTransform'), 'this')
-    self.var_table.add_var(VarName('this_gameObj'), UdonTypeName('UnityEngineGameObject'), 'this')
+    self.var_table.add_var(VarName('this_trans'), UdonTypeName('Transform'), 'this')
+    self.var_table.add_var(VarName('this_gameObj'), UdonTypeName('GameObject'), 'this')
 
 
     # parse and eval AST
@@ -102,7 +102,7 @@ class UdonCompiler:
             # FORCE CAST, NO CHECK
             ret_type = funcdef_stmt.returns.id  # type: ignore
           else:
-            ret_type = UdonTypeName('SystemVoid')
+            ret_type = UdonTypeName('Void')
           # Add to function table
           self.def_func_table.add_func(FuncName(func_name), tuple(arg_types), ret_type, tuple(arg_var_names))
 
@@ -138,7 +138,7 @@ class UdonCompiler:
         subscript_expr: ast.Subscript = cast(ast.Subscript, assign.targets[0])
         # FORCE CAST, NO CHECK
         if type(subscript_expr.slice) is not ast.Index:
-          raise Exception(f'{subscript_expr.lineno}:{subscript_expr.col_offset} {self.print_ast(subscript_expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+          raise Exception(f'{subscript_expr.lineno}:{subscript_expr.col_offset} {self.print_ast(subscript_expr)}: Only index (Int32) can be used as array subscripts (slices etc. are not supported)')
         
         index_value:ast.expr  = subscript_expr.slice.value # type: ignore
         _call: ast.Call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Set"), args=[index_value, assign.value])
@@ -163,7 +163,7 @@ class UdonCompiler:
       if test_result_var_name is None:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
 
-      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
+      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('Boolean'):
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
       self.uasm.push_var(test_result_var_name)
       # if (!test) goto else
@@ -193,7 +193,7 @@ class UdonCompiler:
       if test_result_var_name is None:
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
 
-      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('SystemBoolean'):
+      if self.var_table.get_var_type(test_result_var_name) != UdonTypeName('Boolean'):
         raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: There is no value for the conditional expression.')
       self.uasm.push_var(test_result_var_name)
       # if (!test) goto else
@@ -268,7 +268,7 @@ class UdonCompiler:
           # FORCE CAST, NO CHECK
           ret_type = funcdef_stmt.returns.id  # type: ignore
         else:
-          ret_type = UdonTypeName('SystemVoid')
+          ret_type = UdonTypeName('Void')
         self.current_func_ret_type = ret_type # for type checking return expr 
         # Add argment tmp variables
         for arg_var_name, arg_type in arg_var_name_types:
@@ -318,7 +318,7 @@ class UdonCompiler:
       
       # If return statement without expression
       else:
-        if self.current_func_ret_type != None and self.current_func_ret_type != UdonTypeName('SystemVoid'):
+        if self.current_func_ret_type != None and self.current_func_ret_type != UdonTypeName('Void'):
           raise Exception(f'{stmt.lineno}:{stmt.col_offset} {self.print_ast(stmt)}: ReThis function returns a value of type "{self.current_func_ret_type}", but did not return a value in the return statement.')
 
       # Return
@@ -351,9 +351,9 @@ class UdonCompiler:
       num: ast.Num = cast(ast.Num, expr)
       const_var_name = VarName(self.uasm.get_next_id('const'))
       if type(num.n) is int:
-        self.var_table.add_var(const_var_name, UdonTypeName('SystemInt32'), f'{num.n}')
+        self.var_table.add_var(const_var_name, UdonTypeName('Int32'), f'{num.n}')
       elif type(num.n) is float:
-        self.var_table.add_var(const_var_name, UdonTypeName('SystemSingle'), f'{num.n}')
+        self.var_table.add_var(const_var_name, UdonTypeName('Single'), f'{num.n}')
       return const_var_name
 
     # string Expression
@@ -362,7 +362,7 @@ class UdonCompiler:
       # FORCE CAST
       _str: ast.Str = cast(ast.Str, expr)
       const_var_name = VarName(self.uasm.get_next_id('const'))
-      self.var_table.add_var(const_var_name, UdonTypeName('SystemString'), f'"{_str.s}"')
+      self.var_table.add_var(const_var_name, UdonTypeName('String'), f'"{_str.s}"')
       return const_var_name
 
     # Embedded Constant Expression
@@ -372,13 +372,13 @@ class UdonCompiler:
       _const: ast.NameConstant = cast(ast.NameConstant, expr)
       const_var_name = VarName(self.uasm.get_next_id('const'))
       if type(_const.value) is bool and _const.value == True:
-        self.var_table.add_var(const_var_name, UdonTypeName('SystemBoolean'), f'null')
+        self.var_table.add_var(const_var_name, UdonTypeName('Boolean'), f'null')
         self.uasm.set_bool(const_var_name, True)
       elif type(_const.value) is bool and _const.value == False:
-        self.var_table.add_var(const_var_name, UdonTypeName('SystemBoolean'), f'null')
+        self.var_table.add_var(const_var_name, UdonTypeName('Boolean'), f'null')
         self.uasm.set_bool(const_var_name, False)
       elif _const.value is None:
-        self.var_table.add_var(const_var_name, UdonTypeName('SystemObject'), f'null')
+        self.var_table.add_var(const_var_name, UdonTypeName('Object'), f'null')
       return const_var_name
 
     # Variable Expression
@@ -441,9 +441,9 @@ class UdonCompiler:
         raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: There is no value on the right side of Binary Expression.')
       left_var_type = self.var_table.get_var_type(binop_left_var_name)
       right_var_type = self.var_table.get_var_type(binop_right_var_name)
-      special_mult_list = ["UnityEngineColor", "UnityEngineMatrix4x4", 'UnityEngineQuaternion', 'UnityEngineVector2', 'UnityEngineVector3', 'UnityEngineVector4']
+      special_mult_list = ["Color", "Matrix4x4", 'Quaternion', 'Vector2', 'Vector3', 'Vector4']
       # Check if this is a special case of Udon's unstandardized naming for mulitiplication, and if so flip correctly.
-      if left_var_type is "SystemSingle" and right_var_type in special_mult_list:
+      if left_var_type is "Single" and right_var_type in special_mult_list:
         # This flips the left and right operand, to ensure ability of commutative multiplication
         flip_var_temp = binop_right_var_name
         binop_right_var_name = binop_left_var_name
@@ -511,7 +511,7 @@ class UdonCompiler:
         raise Exception(f'{compare.lineno}:{compare.col_offset} {self.print_ast(compare)}: Comparison of comparison operators is limited to one by one. (0 <= a <100 cannot be written)')
 
       compare_result_var_name = VarName(self.uasm.get_next_id('compare'))
-      self.var_table.add_var(compare_result_var_name, UdonTypeName('SystemBoolean'), 'null')
+      self.var_table.add_var(compare_result_var_name, UdonTypeName('Boolean'), 'null')
       op = compare.ops[0]
       comparator = compare.comparators[0]
       compare_left_var_name = self.eval_expr(compare.left)
@@ -605,7 +605,7 @@ class UdonCompiler:
       subscript_expr: ast.Subscript = cast(ast.Subscript, expr)
       # checking type(subscript_expr.slice) is ast.Index
       if type(subscript_expr.slice) is not ast.Index:
-        raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Only index (SystemInt32) can be used as array subscripts (slices etc. are not supported)')
+        raise Exception(f'{expr.lineno}:{expr.col_offset} {self.print_ast(expr)}: Only index (Int32) can be used as array subscripts (slices etc. are not supported)')
 
       index_value:ast.expr  = subscript_expr.slice.value # type: ignore
       _call = ast.Call(func=ast.Attribute(value=subscript_expr.value, attr="Get"), args=[index_value])
@@ -713,7 +713,7 @@ class UdonCompiler:
       arg_var_name: VarName = arg_var_names[0]
       instantiate_var_name = VarName(self.uasm.get_next_id('instantiate'))
       self.var_table.add_var(
-        instantiate_var_name, UdonTypeName('UnityEngineGameObject'), 'null')
+        instantiate_var_name, UdonTypeName('GameObject'), 'null')
       self.uasm.call_extern(
         ExternStr('VRCInstantiate.__Instantiate__UnityEngineGameObject__UnityEngineGameObject'),
         [arg_var_name, instantiate_var_name])

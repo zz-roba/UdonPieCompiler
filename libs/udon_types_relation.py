@@ -1,4 +1,4 @@
-udon_types = {
+udon_types_rel = {
   'AINavMeshAgentRef': 'UnityEngineAINavMeshAgentRef',
   'AINavMeshDataRef': 'UnityEngineAINavMeshDataRef',
   'AINavMeshHitRef': 'UnityEngineAINavMeshHitRef',

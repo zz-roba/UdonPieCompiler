@@ -65,12 +65,12 @@ class UdonAssembly:
   # Udon Instructions And Wrapper
 
   def nop(self):
-    self.add_inst(1, 'NOP')
+    self.add_inst(4, 'NOP')
 
   def remove_top(self):
     'Udon POP is removing top'
     self.add_inst_comment('Remove Top')
-    self.add_inst(1, 'POP')
+    self.add_inst(4, 'POP')
   
   def pop_var(self, ret_value_name: VarName) -> None:
     'True POP'
@@ -88,10 +88,10 @@ class UdonAssembly:
       self.pop_var(var_name)
 
   def push(self, addr: Addr) -> None:
-    self.add_inst(Addr(5), f'PUSH, {addr:010x}')
+    self.add_inst(Addr(8), f'PUSH, {addr:08x}')
 
   def push_var(self, var_name: VarName) -> None:
-    self.add_inst(Addr(5), f'PUSH, {var_name}')
+    self.add_inst(Addr(8), f'PUSH, {var_name}')
 
   def push_vars(self, var_names: List[VarName]) -> None:
     self.add_inst_comment(f'Pushs {str(var_names)}')
@@ -99,37 +99,37 @@ class UdonAssembly:
       self.push_var(var_name)
 
   def copy(self) -> None:
-    self.add_inst(Addr(1), 'COPY')
+    self.add_inst(Addr(4), 'COPY')
     
   def push_str(self, _str: str) -> None:
-    self.add_inst(Addr(5), f'PUSH, "{_str}"')
+    self.add_inst(Addr(8), f'PUSH, "{_str}"')
 
   def jump(self, addr: Addr) -> None:
-    self.add_inst(Addr(5), f'JUMP, 0x{addr:010x}')
+    self.add_inst(Addr(8), f'JUMP, 0x{addr:08x}')
 
   def jump_label(self, label: LabelName) -> None:
     # ###{label}### is temporary label
-    self.add_inst(Addr(5), f'JUMP, ###{label}###')
+    self.add_inst(Addr(8), f'JUMP, ###{label}###')
 
   def jump_if_false(self, addr: Addr) -> None:
-    self.add_inst(Addr(5), f'JUMP_IF_FALSE, 0x{addr:010x}')
+    self.add_inst(Addr(8), f'JUMP_IF_FALSE, 0x{addr:08x}')
 
   def jump_if_false_label(self, label: LabelName) -> None:
     # ###{label}### is temporary label
-    self.add_inst(Addr(5), f'JUMP_IF_FALSE, ###{label}###')
+    self.add_inst(Addr(8), f'JUMP_IF_FALSE, ###{label}###')
 
   def jump_indirect(self, var_name: VarName) -> None:
-    self.add_inst(Addr(5), f'JUMP_INDIRECT, {var_name}')
+    self.add_inst(Addr(8), f'JUMP_INDIRECT, {var_name}')
 
   def jump_ret_addr(self) -> None:
-    self.add_inst(Addr(5), f'JUMP_INDIRECT, ret_addr')
+    self.add_inst(Addr(8), f'JUMP_INDIRECT, ret_addr')
 
   def extern(self, extern_str: ExternStr) -> None:
-    self.add_inst(Addr(5), f'EXTERN, "{extern_str}"')
+    self.add_inst(Addr(8), f'EXTERN, "{extern_str}"')
 
   def end(self) -> None:
     """event end"""
-    self.add_inst(Addr(5), f'JUMP, 0xFFFFFF')
+    self.add_inst(Addr(8), f'JUMP, 0xFFFFFFFF')
     return
 
   def call_extern(self, extern_str: ExternStr, arg_vars: List[VarName]) -> None:
@@ -170,7 +170,7 @@ class UdonAssembly:
   def set_uint32(self, var_name: VarName, num: int) -> None:
     self.add_inst_comment(f'{str(var_name)} = {str(num)}')
     const_var_name = VarName(self.get_next_id('const_uint32'))
-    self.var_table.add_var(const_var_name, UdonTypeName('SystemUInt32'), f'{num}')
+    self.var_table.add_var(const_var_name, UdonTypeName('UInt32'), f'{num}')
     self.push_var(const_var_name)
     self.push_var(var_name)
     self.copy()
@@ -189,7 +189,7 @@ class UdonAssembly:
         match = re.match(r'.*###(.*)###.*', line)
         if match is not None and match.group(1) is not None:
             label_name = LabelName(match.group(1))
-            line_new = line.replace(f'###{label_name}###', f'0x{self.get_addr(label_name):010x}')
+            line_new = line.replace(f'###{label_name}###', f'0x{self.get_addr(label_name):08x}')
             replace_str += f'{line_new}\n'
         else:
             replace_str += f'{line}\n'
@@ -210,7 +210,7 @@ class UdonAssembly:
     # Save return address in order to return
     self.var_table.add_var(
       VarName(const_ret_addr),
-      UdonTypeName('SystemUInt32'),
+      UdonTypeName('UInt32'),
       f'###{ret_call_label}###')
     # self.assign(VarName('ret_addr'), VarName(const_ret_addr))
     self.push_var(VarName(const_ret_addr))
@@ -220,7 +220,7 @@ class UdonAssembly:
     self.jump_label(LabelName(self.def_func_table.get_function_id(func_name, arg_var_types)))
     self.add_label_crrent_addr(ret_call_label)
 
-    if ret_type_name != UdonTypeName('SystemVoid'):
+    if ret_type_name != UdonTypeName('Void'):
       # pop ret_var_name
       self.var_table.add_var(ret_value, ret_type_name, 'null')
       self.pop_var(ret_value)

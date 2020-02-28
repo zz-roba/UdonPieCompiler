@@ -40,8 +40,8 @@ class VarTable:
   def add_var(self, var_name: VarName, type_name: UdonTypeName, init_value_str: str) -> None:
     if var_name in self.var_dict:
       raise Exception(f'add_var: {var_name} is already registered.')
-    if type_name == UdonTypeName('SystemVoid'):
-      raise Exception(f'add_var: {var_name} is SystemVoid.')
+    if type_name == UdonTypeName('Void'):
+      raise Exception(f'add_var: {var_name} is Void.')
     # print(f'add_var({var_name}, {type_name}, {init_value_str})')
     self.var_dict[var_name] = (type_name, init_value_str)
 
@@ -80,7 +80,7 @@ class VarTable:
       if type_name == "VRCUdonCommonInterfacesIUdonEventReceiver":
         data_str += f'        {var_name}: %VRCUdonUdonBehaviour, {init_value}\n'
       else:
-        data_str += f'        {var_name}: %{type_name}, {init_value}\n'
+        data_str += f'        {var_name}: %{udon_types[type_name]}, {init_value}\n'
     data_str += f'\n.data_end\n\n'
     return data_str
 
@@ -115,7 +115,7 @@ Are the argument types correct?')
     return ret_type
 
   def get_function_id(self, func_name: FuncName, arg_types: List[UdonTypeName]) -> str:
-    # ex) function id of func(:SystemInt32, SystemFloat) is "func_SystemInt32_SystemFloat"
+    # ex) function id of func(:Int32, Float) is "func_SystemInt32_SystemFloat"
     return f'{func_name}__{"_".join(arg_types)}'
 
 
@@ -145,15 +145,15 @@ class UdonMethodTable:
 
 if __name__ == '__main__':
   var_table = VarTable()
-  var_table.add_var(VarName('aaa'), UdonTypeName('SystemInt32'), '100')
-  var_table.add_var(VarName('bbb'), UdonTypeName('SystemInt32'), '200')
+  var_table.add_var(VarName('aaa'), UdonTypeName('Int32'), '100')
+  var_table.add_var(VarName('bbb'), UdonTypeName('Int32'), '200')
   var_table.print_data_seg()
 
   udon_method_table = UdonMethodTable()
   # pp.pprint(udon_method_table.udon_method_dict)
   print(udon_method_table.get_ret_type_extern_str(
     'InstanceFunc',
-    UdonTypeName('SystemByteArray'),
+    UdonTypeName('ByteArray'),
     UdonMethodName('GetValue'),
-    (UdonTypeName('SystemInt32'), )))
-# SystemByteArray.GetValue SystemInt32
+    (UdonTypeName('Int32'), )))
+# ByteArray.GetValue Int32
