@@ -129,7 +129,7 @@ class UdonAssembly:
 
   def end(self) -> None:
     """event end"""
-    self.add_inst(Addr(8), f'JUMP, 0xFFFFFFFF')
+    self.add_inst(Addr(8), f'JUMP, 0xFFFFFFFC')
     return
 
   def call_extern(self, extern_str: ExternStr, arg_vars: List[VarName]) -> None:
@@ -254,7 +254,7 @@ class UdonAssembly:
       # TODO: Add user event processing
       # (I still don't understand the specifications of user events)
       table_arg_type_and_names = ()
-    
+
     self.event_names.append(event_name)
 
   def event_head(self, event_name: EventName) -> None:
